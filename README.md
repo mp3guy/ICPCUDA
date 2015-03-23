@@ -18,14 +18,14 @@ Where ~/Desktop/rgbd\_dataset\_freiburg1\_desk/ contains the association.txt fil
 The code will run both methods for ICP and output something like this on an nVidia GeForce GTX 780 Ti;
 
 ```bash
-Fast ICP: 3.8693, Slow ICP: 6.1334
+Fast ICP: 3.8693ms, Slow ICP: 6.1334ms
 1.5852 times faster.
 ```
 
 And something like this on an nVidia GeForce GTX 880M;
 
 ```bash
-Fast ICP: 8.0522, Slow ICP: 11.3533
+Fast ICP: 8.0522ms, Slow ICP: 11.3533ms
 1.4100 times faster.
 ```
 

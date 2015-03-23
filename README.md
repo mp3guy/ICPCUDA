@@ -1,5 +1,5 @@
 # ICPCUDA
-Super fast implementation of ICP in CUDA for compute capable devices 3.0 or higher
+Super fast implementation of ICP in CUDA for compute capable devices 3.0 or higher. On an nVidia GeForce GTX 780 Ti it runs at over __450Hz__ (using projective data assocation). 
 
 Requires CUDA, Boost, Eigen and OpenCV. I've built it to take in raw TUM RGB-D datasets to do frame-to-frame dense ICP as an example application.
 

@@ -111,7 +111,7 @@ void ICPOdometry::initICPModel(unsigned short * depth,
     cudaDeviceSynchronize();
 }
 
-void ICPOdometry::getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot)
+void ICPOdometry::getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot, int threads, int blocks)
 {
     iterations[0] = 10;
     iterations[1] = 5;
@@ -162,7 +162,9 @@ void ICPOdometry::getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::M
                     outData,
                     A_icp.data(),
                     b_icp.data(),
-                    &residual[0]);
+                    &residual[0],
+                    threads,
+                    blocks);
 
             lastICPError = sqrt(residual[0]) / residual[1];
             lastICPCount = residual[1];

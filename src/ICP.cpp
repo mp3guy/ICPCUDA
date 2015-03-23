@@ -82,7 +82,7 @@ int main(int argc, char * argv[])
 {
     Stopwatch::getInstance().setCustomSignature(12312);
 
-    assert(argc == 2 && "Please supply the association file dir as the first argument");
+    assert((argc == 2 || argc == 3) && "Please supply the association file dir as the first argument");
 
     directory.append(argv[1]);
 
@@ -105,6 +105,7 @@ int main(int argc, char * argv[])
     assert(!asFile.eof());
 
     loadDepth(firstRaw);
+    uint64_t timestamp = loadDepth(secondRaw);
 
     Eigen::Matrix4f currPoseFast = Eigen::Matrix4f::Identity();
     Eigen::Matrix4f currPoseSlow = Eigen::Matrix4f::Identity();
@@ -116,14 +117,74 @@ int main(int argc, char * argv[])
     file.open("slow.poses", std::fstream::out);
     file.close();
 
-    float meanFast = 0.0f;
+    float meanFast = std::numeric_limits<float>::max();
     float meanSlow = 0.0f;
     int count = 0;
 
+    int threads = 64;
+    int blocks = 1024;
+
+    int bestThreads = threads;
+    int bestBlocks = blocks;
+    float bestFast = meanFast;
+
+    if(argc == 3)
+    {
+        std::string searchArg(argv[2]);
+
+        if(searchArg.compare("-v") == 0)
+        {
+            std::cout << "Searching for the best thread/block configuration for your GPU..." << std::endl;
+            std::cout << "Best: " << bestThreads << ", " << bestBlocks << " blocks (" << bestFast << "ms)"; std::cout.flush();
+
+            float counter = 0;
+
+            for(threads = 16; threads <= 1024; threads += 16)
+            {
+                for(blocks = 16; blocks <= 1024; blocks += 16)
+                {
+                    meanFast = 0.0f;
+                    count = 0;
+
+                    icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPoseFast);
+                    icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
+
+                    Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
+                    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
+
+                    TICK("ICPFast");
+                    icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
+                    TOCK("ICPFast");
+
+                    meanFast = (float(count) * meanFast + Stopwatch::getInstance().getTimings().at("ICPFast")) / float(count + 1);
+                    count++;
+
+                    counter++;
+
+                    if(meanFast < bestFast)
+                    {
+                        bestFast = meanFast;
+                        bestThreads = threads;
+                        bestBlocks = blocks;
+                    }
+
+                    std::cout << "\rBest: " << bestThreads << ", " << bestBlocks << " blocks (" << bestFast << "ms), " << int((counter / 4096.f) * 100.f) << "%    "; std::cout.flush();
+                }
+            }
+
+            std::cout << std::endl;
+        }
+    }
+
+    threads = bestThreads;
+    blocks = bestBlocks;
+
+    meanFast = 0.0f;
+    meanSlow = 0.0f;
+    count = 0;
+
     while(!asFile.eof())
     {
-        uint64_t timestamp = loadDepth(secondRaw);
-
         icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPoseFast);
 
         icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
@@ -132,7 +193,7 @@ int main(int argc, char * argv[])
         Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
         TICK("ICPFast");
-        icpOdom.getIncrementalTransformation(trans, rot);
+        icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
         TOCK("ICPFast");
 
         currPoseFast.topLeftCorner(3, 3) = rot;
@@ -169,6 +230,8 @@ int main(int argc, char * argv[])
 
         outputFreiburg("fast.poses", timestamp, currPoseFast);
         outputFreiburg("slow.poses", timestamp, currPoseSlow);
+
+        timestamp = loadDepth(secondRaw);
     }
 
     std::cout << std::endl;

@@ -35,7 +35,7 @@ class ICPOdometry
 
         void initICPModel(unsigned short * depth, const float depthCutoff, const Eigen::Matrix4f & modelPose);
 
-        void getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot);
+        void getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot, int threads, int blocks);
 
         Eigen::MatrixXd getCovariance();
 

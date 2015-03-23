@@ -298,7 +298,8 @@ void icpStep(const Mat33& Rcurr,
              DeviceArray<jtjjtr> & out,
              float * matrixA_host,
              float * vectorB_host,
-             float * residual_host)
+             float * residual_host,
+             int threads, int blocks)
 {
     int cols = vmap_curr.cols ();
     int rows = vmap_curr.rows () / 3;
@@ -327,9 +328,6 @@ void icpStep(const Mat33& Rcurr,
 
     icp.N = cols * rows;
     icp.out = sum;
-
-    int threads = 64;
-    int blocks = 1024;
 
     icpKernel<<<blocks, threads>>>(icp);
 

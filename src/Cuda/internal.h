@@ -136,7 +136,8 @@ void icpStep(const Mat33& Rcurr,
              DeviceArray<jtjjtr> & out,
              float * matrixA_host,
              float * vectorB_host,
-             float * residual_host);
+             float * residual_host,
+             int threads, int blocks);
 
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);
 void createVMap(const Intr& intr, const DeviceArray2D<unsigned short> & depth, DeviceArray2D<float> & vmap, const float depthCutoff);

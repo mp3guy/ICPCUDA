@@ -121,8 +121,8 @@ int main(int argc, char * argv[])
     float meanSlow = 0.0f;
     int count = 0;
 
-    int threads = 64;
-    int blocks = 1024;
+    int threads = 128;
+    int blocks = 96;
 
     int bestThreads = threads;
     int bestBlocks = blocks;
@@ -139,25 +139,28 @@ int main(int argc, char * argv[])
 
             float counter = 0;
 
-            for(threads = 16; threads <= 1024; threads += 16)
+            for(threads = 16; threads <= 512; threads += 16)
             {
-                for(blocks = 16; blocks <= 1024; blocks += 16)
+                for(blocks = 16; blocks <= 512; blocks += 16)
                 {
                     meanFast = 0.0f;
                     count = 0;
 
-                    icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPoseFast);
-                    icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
+                    for(int i = 0; i < 5; i++)
+                    {
+                        icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPoseFast);
+                        icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
 
-                    Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
-                    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
+                        Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
+                        Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
-                    TICK("ICPFast");
-                    icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
-                    TOCK("ICPFast");
+                        TICK("ICPFast");
+                        icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
+                        TOCK("ICPFast");
 
-                    meanFast = (float(count) * meanFast + Stopwatch::getInstance().getTimings().at("ICPFast")) / float(count + 1);
-                    count++;
+                        meanFast = (float(count) * meanFast + Stopwatch::getInstance().getTimings().at("ICPFast")) / float(count + 1);
+                        count++;
+                    }
 
                     counter++;
 
@@ -168,7 +171,7 @@ int main(int argc, char * argv[])
                         bestBlocks = blocks;
                     }
 
-                    std::cout << "\rBest: " << bestThreads << ", " << bestBlocks << " blocks (" << bestFast << "ms), " << int((counter / 4096.f) * 100.f) << "%    "; std::cout.flush();
+                    std::cout << "\rBest: " << bestThreads << ", " << bestBlocks << " blocks (" << bestFast << "ms), " << int((counter / 1024.f) * 100.f) << "%    "; std::cout.flush();
                 }
             }
 

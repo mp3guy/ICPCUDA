@@ -17,27 +17,29 @@ Run like;
 
 Where ~/Desktop/rgbd\_dataset\_freiburg1\_desk/ contains the association.txt file with rgb first and depth second, for more information see [here](http://vision.in.tum.de/data/datasets/rgbd-dataset).
 
-The code will run both methods for ICP and output something like this on an nVidia GeForce GTX 780 Ti;
+The main idea to getting the best performance is determining the best thread/block sizes to use. I have provided an exhaustive search function to do this, since it varies between GPUs. Simply pass the "-v" switch to the program to activate the search. The code will then first do a search for the best thread/block sizes and then run both methods for ICP and output something like this on an nVidia GeForce GTX 780 Ti;
 
 ```bash
-Fast ICP: 3.8693ms, Slow ICP: 6.1334ms
-1.5852 times faster.
+Searching for the best thread/block configuration for your GPU...
+Best: 96, 128 blocks (2.1332ms), 100%   
+Fast ICP: 2.1775ms, Slow ICP: 6.3349ms
+2.9092 times faster.
 ```
 
-And something like this on an nVidia GeForce GTX 880M;
+And something like this on an nVidia GeForce GTX 675M;
 
 ```bash
-Fast ICP: 8.0522ms, Slow ICP: 11.3533ms
-1.4100 times faster.
+Searching for the best thread/block configuration for your GPU...
+Best: 128, 80 blocks (8.7626ms), 100%   
+Fast ICP: 8.5406ms, Slow ICP: 23.0527ms
+2.6992 times faster.
 ```
-
-The main part to mess with is the thread/block sizes used, around [line 339 of src/Cuda/icp.cu](https://github.com/mp3guy/ICPCUDA/blob/master/src/Cuda/icp.cu#L339). Try what's best for you! 
 
 The code will output two files, fast.poses and slow.poses. You can evaluate them on the TUM benchmark by using their tools. I get something like this;
 
 ```bash
 python ~/stuff/Kinect_Logs/Freiburg/evaluate_ate.py ~/Desktop/rgbd_dataset_freiburg1_desk/groundtruth.txt fast.poses 
-0.147061
+0.147167
 python ~/stuff/Kinect_Logs/Freiburg/evaluate_ate.py ~/Desktop/rgbd_dataset_freiburg1_desk/groundtruth.txt slow.poses 
 0.147113
 ```

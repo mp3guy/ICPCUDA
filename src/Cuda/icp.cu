@@ -41,10 +41,6 @@ __inline__  __device__ jtjjtr warpReduceSum(jtjjtr val)
 
         val.residual += __shfl_down(val.residual, offset);
         val.inliers += __shfl_down(val.inliers, offset);
-
-        val.var0 += __shfl_down(val.var0, offset);
-        val.var1 += __shfl_down(val.var1, offset);
-        val.var2 += __shfl_down(val.var2, offset);
     }
 
     return val;
@@ -70,7 +66,7 @@ __inline__  __device__ jtjjtr blockReduceSum(jtjjtr val)
     const jtjjtr zero = {0, 0, 0, 0, 0, 0, 0, 0,
                          0, 0, 0, 0, 0, 0, 0, 0,
                          0, 0, 0, 0, 0, 0, 0, 0,
-                         0, 0, 0, 0, 0, 0, 0, 0};
+                         0, 0, 0, 0, 0};
 
     //ensure we only grab a value from shared memory if that warp existed
     val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : zero;
@@ -88,7 +84,7 @@ __global__ void reduceSum(jtjjtr * in, jtjjtr * out, int N)
     jtjjtr sum = {0, 0, 0, 0, 0, 0, 0, 0,
                   0, 0, 0, 0, 0, 0, 0, 0,
                   0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0};
+                  0, 0, 0, 0, 0};
 
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
     {
@@ -253,11 +249,7 @@ struct ICPReduction
                          row[5] * row[6],
 
                          row[6] * row[6],
-                         found_coresp,
-
-                         0,
-                         0,
-                         0};
+                         found_coresp};
 
         return values;
     }
@@ -268,7 +260,7 @@ struct ICPReduction
         jtjjtr sum = {0, 0, 0, 0, 0, 0, 0, 0,
                       0, 0, 0, 0, 0, 0, 0, 0,
                       0, 0, 0, 0, 0, 0, 0, 0,
-                      0, 0, 0, 0, 0, 0, 0, 0};
+                      0, 0, 0, 0, 0};
 
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
         {

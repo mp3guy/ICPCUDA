@@ -77,9 +77,6 @@ struct jtjjtr
     //Extra data needed (29)
     float residual, inliers;
 
-    //Spare data to round up (32)
-    float var0, var1, var2;
-
     __device__ inline void add(const jtjjtr & a)
     {
         aa += a.aa;
@@ -117,10 +114,6 @@ struct jtjjtr
 
         residual += a.residual;
         inliers += a.inliers;
-
-        var0 += a.var0;
-        var1 += a.var1;
-        var2 += a.var2;
     }
 };
 

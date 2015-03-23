@@ -31,7 +31,7 @@ Fast ICP: 8.0522ms, Slow ICP: 11.3533ms
 1.4100 times faster.
 ```
 
-The main part to mess with is the thread/block sizes used, around line 339 of src/Cuda/icp.cu. Try what's best for you! 
+The main part to mess with is the thread/block sizes used, around [line 339 of src/Cuda/icp.cu](https://github.com/mp3guy/ICPCUDA/blob/master/src/Cuda/icp.cu#L339). Try what's best for you! 
 
 The code will output two files, fast.poses and slow.poses. You can evaluate them on the TUM benchmark by using their tools. I get something like this;
 

@@ -53,9 +53,6 @@ ICPSlowdometry::ICPSlowdometry(int width,
         vmaps_curr_[i].create (pyr_rows*3, pyr_cols);
         nmaps_curr_[i].create (pyr_rows*3, pyr_cols);
     }
-
-    vmaps_tmp.create(height * 4 * width);
-    nmaps_tmp.create(height * 4 * width);
 }
 
 ICPSlowdometry::~ICPSlowdometry()

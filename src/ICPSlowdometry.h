@@ -48,9 +48,6 @@ class ICPSlowdometry
     private:
         std::vector<DeviceArray2D<unsigned short> > depth_tmp;
 
-        DeviceArray<float> vmaps_tmp;
-        DeviceArray<float> nmaps_tmp;
-
         std::vector<DeviceArray2D<float> > vmaps_g_prev_;
         std::vector<DeviceArray2D<float> > nmaps_g_prev_;
 

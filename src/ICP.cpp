@@ -102,7 +102,7 @@ int main(int argc, char * argv[])
     ICPOdometry icpOdom(640, 480, 320, 240, 528, 528);
     ICPSlowdometry icpSlowdom(640, 480, 320, 240, 528, 528);
 
-    assert(!asFile.eof());
+    assert(!asFile.eof() && asFile.is_open());
 
     loadDepth(firstRaw);
     uint64_t timestamp = loadDepth(secondRaw);

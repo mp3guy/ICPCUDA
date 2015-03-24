@@ -26,7 +26,7 @@ Fast ICP: 2.1775ms, Slow ICP: 6.3349ms
 2.9092 times faster.
 ```
 
-And something like this on an nVidia GeForce GTX 675M;
+And something like this on an nVidia GeForce GTX 675MX;
 
 ```bash
 Searching for the best thread/block configuration for your GPU...

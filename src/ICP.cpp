@@ -117,6 +117,14 @@ int main(int argc, char * argv[])
     file.open("slow.poses", std::fstream::out);
     file.close();
 
+    cudaDeviceProp prop;
+
+    cudaGetDeviceProperties(&prop, 0);
+
+    std::string dev(prop.name);
+
+    std::cout << dev << std::endl;
+
     float meanFast = std::numeric_limits<float>::max();
     float meanSlow = 0.0f;
     int count = 0;

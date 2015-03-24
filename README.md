@@ -21,7 +21,7 @@ The main idea to getting the best performance is determining the best thread/blo
 
 ```bash
 Searching for the best thread/block configuration for your GPU...
-Best: 96, 128 blocks (2.1332ms), 100%   
+Best: 96 threads, 128 blocks (2.1332ms), 100%   
 Fast ICP: 2.1775ms, Slow ICP: 6.3349ms
 2.9092 times faster.
 ```
@@ -30,7 +30,7 @@ And something like this on an nVidia GeForce GTX 675M;
 
 ```bash
 Searching for the best thread/block configuration for your GPU...
-Best: 128, 80 blocks (8.7626ms), 100%   
+Best: 128 threads, 80 blocks (8.7626ms), 100%   
 Fast ICP: 8.5406ms, Slow ICP: 23.0527ms
 2.6992 times faster.
 ```

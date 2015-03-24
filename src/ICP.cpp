@@ -135,7 +135,7 @@ int main(int argc, char * argv[])
         if(searchArg.compare("-v") == 0)
         {
             std::cout << "Searching for the best thread/block configuration for your GPU..." << std::endl;
-            std::cout << "Best: " << bestThreads << ", " << bestBlocks << " blocks (" << bestFast << "ms)"; std::cout.flush();
+            std::cout << "Best: " << bestThreads << " threads, " << bestBlocks << " blocks (" << bestFast << "ms)"; std::cout.flush();
 
             float counter = 0;
 
@@ -171,7 +171,7 @@ int main(int argc, char * argv[])
                         bestBlocks = blocks;
                     }
 
-                    std::cout << "\rBest: " << bestThreads << ", " << bestBlocks << " blocks (" << bestFast << "ms), " << int((counter / 1024.f) * 100.f) << "%    "; std::cout.flush();
+                    std::cout << "\rBest: " << bestThreads << " threads, " << bestBlocks << " blocks (" << bestFast << "ms), " << int((counter / 1024.f) * 100.f) << "%    "; std::cout.flush();
                 }
             }
 

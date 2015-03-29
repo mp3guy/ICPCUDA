@@ -1,5 +1,5 @@
 # ICPCUDA
-Super fast implementation of ICP in CUDA for compute capable devices 3.0 or higher. On an nVidia GeForce GTX 780 Ti it runs at over __450Hz__ (using projective data assocation). 
+Super fast implementation of ICP in CUDA for compute capable devices 2.0 or higher. On an nVidia GeForce GTX 780 Ti it runs at over __450Hz__ (using projective data assocation). To compile all architectures you'll need CUDA 7.0 I think, (or 6.5 with the special release for 9xx cards). You can compile for older cards by removing the unsupported architectures from the CMakeLists.txt file. 
 
 Requires CUDA, Boost, Eigen and OpenCV. I've built it to take in raw TUM RGB-D datasets to do frame-to-frame dense ICP as an example application.
 
@@ -7,7 +7,7 @@ The code is a mishmash of my own stuff written from scratch, plus a bunch of ran
 
 The particular version of ICP implemented is the one introduced by [KinectFusion](http://homes.cs.washington.edu/~newcombe/papers/newcombe_etal_ismar2011.pdf). This means a three level coarse-to-fine registration pyramid, from 160x120 to 320x240 and finally 640x480 image sizes, with 4, 5 and 10 iterations per level respectively. 
 
-The fast ICP implementation, which is my own, essentially exploits the shlf instruction added to compute capable 3.0 devices that removes the need for warp level synchronisation when exchanging values, see more [here](http://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/).
+The fast ICP implementation, which is my own, essentially exploits the shlf instruction added to compute capable 3.0 devices that removes the need for warp level synchronisation when exchanging values, see more [here](http://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/). In the case that your card is less than compute capable 3.0, I've included a fake shfl method which accomplishes the same thing at the cost of performance. 
 
 Run like;
 

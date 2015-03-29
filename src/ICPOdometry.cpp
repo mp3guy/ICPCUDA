@@ -22,7 +22,7 @@ ICPOdometry::ICPOdometry(int width,
   height(height),
   cx(cx), cy(cy), fx(fx), fy(fy)
 {
-    sumData.create(1024);
+    sumData.create(MAX_THREADS);
     outData.create(1);
 
     intr.cx = cx;

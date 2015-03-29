@@ -42,6 +42,12 @@
 #include <vector_types.h>
 #include <cuda_runtime_api.h>
 
+#if __CUDA_ARCH__ < 300
+#define MAX_THREADS 512
+#else
+#define MAX_THREADS 1024
+#endif
+
 /** \brief Camera intrinsics structure
   */
 struct Intr

@@ -2,6 +2,20 @@
 #include "vector_math.hpp"
 #include "containers/safe_call.hpp"
 
+#if __CUDA_ARCH__ < 300
+__inline__ __device__
+float __shfl_down(float val, int offset, int width = 32)
+{
+    static __shared__ float shared[MAX_THREADS];
+    int lane = threadIdx.x % 32;
+    shared[threadIdx.x] = val;
+    __syncthreads();
+    val = (lane + offset < width) ? shared[threadIdx.x + offset] : 0;
+    __syncthreads();
+    return val;
+}
+#endif
+
 __inline__  __device__ jtjjtr warpReduceSum(jtjjtr val)
 {
     for(int offset = warpSize / 2; offset > 0; offset /= 2)
@@ -331,7 +345,7 @@ void icpStep(const Mat33& Rcurr,
 
     icpKernel<<<blocks, threads>>>(icp);
 
-    reduceSum<<<1, 1024>>>(sum, out, blocks);
+    reduceSum<<<1, MAX_THREADS>>>(sum, out, blocks);
 
     cudaSafeCall(cudaGetLastError());
     cudaSafeCall(cudaDeviceSynchronize());

@@ -3,6 +3,7 @@
 
 #include <iomanip>
 #include <fstream>
+#include <chrono>
 
 std::ifstream asFile;
 std::string directory;
@@ -80,7 +81,7 @@ void outputFreiburg(const std::string filename, const int64_t & timestamp, const
 
 int main(int argc, char * argv[])
 {
-    Stopwatch::getInstance().setCustomSignature(12312);
+    namespace ch = std::chrono;
 
     assert((argc == 2 || argc == 3) && "Please supply the association file dir as the first argument");
 
@@ -162,11 +163,11 @@ int main(int argc, char * argv[])
                         Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
                         Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
-                        TICK("ICPFast");
+                        auto tick = ch::high_resolution_clock::now();
                         icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
-                        TOCK("ICPFast");
+                        auto tock = ch::high_resolution_clock::now();
 
-                        meanFast = (float(count) * meanFast + Stopwatch::getInstance().getTimings().at("ICPFast")) / float(count + 1);
+                        meanFast = (float(count) * meanFast + ch::duration_cast< ch::milliseconds >(tock-tick).count()) / float(count + 1);
                         count++;
                     }
 
@@ -203,9 +204,9 @@ int main(int argc, char * argv[])
         Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
         Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
-        TICK("ICPFast");
+        auto tick_fast = ch::high_resolution_clock::now();
         icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
-        TOCK("ICPFast");
+        auto tock_fast = ch::high_resolution_clock::now();
 
         currPoseFast.topLeftCorner(3, 3) = rot;
         currPoseFast.topRightCorner(3, 1) = trans;
@@ -217,17 +218,15 @@ int main(int argc, char * argv[])
         trans = currPoseSlow.topRightCorner(3, 1);
         rot = currPoseSlow.topLeftCorner(3, 3);
 
-        TICK("ICPSlow");
+        auto tick_slow = ch::high_resolution_clock::now();
         icpSlowdom.getIncrementalTransformation(trans, rot);
-        TOCK("ICPSlow");
+        auto tock_slow = ch::high_resolution_clock::now();
 
         currPoseSlow.topLeftCorner(3, 3) = rot;
         currPoseSlow.topRightCorner(3, 1) = trans;
 
-        Stopwatch::getInstance().sendAll();
-
-        meanFast = (float(count) * meanFast + Stopwatch::getInstance().getTimings().at("ICPFast")) / float(count + 1);
-        meanSlow = (float(count) * meanSlow + Stopwatch::getInstance().getTimings().at("ICPSlow")) / float(count + 1);
+        meanFast = (float(count) * meanFast + ch::duration_cast< ch::milliseconds >(tock_fast - tick_fast).count()) / float(count + 1);
+        meanSlow = (float(count) * meanSlow + ch::duration_cast< ch::milliseconds >(tock_slow - tick_slow).count()) / float(count + 1);
         count++;
 
         std::cout << std::setprecision(4) << std::fixed

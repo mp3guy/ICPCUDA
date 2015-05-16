@@ -8,7 +8,6 @@
 #ifndef ICPODOMETRY_H_
 #define ICPODOMETRY_H_
 
-#include "Stopwatch.h"
 #include "Cuda/internal.h"
 #include "OdometryProvider.h"
 

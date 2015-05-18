@@ -2,29 +2,22 @@ cmake_minimum_required(VERSION 2.6.0)
 
 project(ICP)
 
+set(THIRD_PARTY_DIR $ENV{THIRD_PARTY_DIR})
+
+# Boost
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+set(BOOST_ROOT ${THIRD_PARTY_DIR}/boost)
+
 find_package(OpenCV REQUIRED)
-find_package(Boost COMPONENTS thread filesystem system REQUIRED)
+find_package(Boost COMPONENTS thread filesystem system date_time chrono REQUIRED)
 find_package(CUDA REQUIRED)
 
-#remove this as soon as eigen is shipped with FindEigen.cmake
-  get_filename_component(EIGEN_ROOT "/usr/include/eigen3" PATH)
-  if(PKG_CONFIG_FOUND)
-    pkg_check_modules(PC_EIGEN eigen3)
-  endif(PKG_CONFIG_FOUND)
-  find_path(EIGEN_INCLUDE_DIRS Eigen/Core
-    HINTS ${PC_EIGEN_INCLUDEDIR} ${PC_EIGEN_INCLUDE_DIRS} 
-          "${EIGEN_ROOT}" "$ENV{EIGEN_ROOT}"
-    PATHS "$ENV{PROGRAMFILES}/Eigen 3.0.0" "$ENV{PROGRAMW6432}/Eigen 3.0.0"
-          "$ENV{PROGRAMFILES}/Eigen" "$ENV{PROGRAMW6432}/Eigen"   
-    PATH_SUFFIXES eigen3 include/eigen3 include)
-  find_package_handle_standard_args(eigen DEFAULT_MSG EIGEN_INCLUDE_DIRS)
-  set(EIGEN_DEFINITIONS ${EIGEN_DEFINITIONS} -DEIGEN_USE_NEW_STDVECTOR 
-      -DEIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET)
-      
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${CUDA_INCLUDE_DIRS})
-include_directories(${EIGEN_INCLUDE_DIRS})
+include_directories($ENV{THIRD_PARTY_DIR}/eigen)
 
 file(GLOB srcs *.cpp)
 file(GLOB cuda Cuda/*.cu)

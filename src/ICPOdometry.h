@@ -8,7 +8,6 @@
 #ifndef ICPODOMETRY_H_
 #define ICPODOMETRY_H_
 
-#include "Stopwatch.h"
 #include "Cuda/internal.h"
 #include "OdometryProvider.h"
 
@@ -17,6 +16,9 @@
 #include <vector_types.h>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/thread/condition_variable.hpp>
 
 class ICPOdometry

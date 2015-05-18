@@ -80,8 +80,6 @@ void outputFreiburg(const std::string filename, const int64_t & timestamp, const
 
 int main(int argc, char * argv[])
 {
-    Stopwatch::getInstance().setCustomSignature(12312);
-
     assert((argc == 2 || argc == 3) && "Please supply the association file dir as the first argument");
 
     directory.append(argv[1]);
@@ -162,11 +160,17 @@ int main(int argc, char * argv[])
                         Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
                         Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
-                        TICK("ICPFast");
-                        icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
-                        TOCK("ICPFast");
+                        boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
+                        boost::posix_time::time_duration duration1(time.time_of_day());
+                        unsigned long long int tick = duration1.total_microseconds();
 
-                        meanFast = (float(count) * meanFast + Stopwatch::getInstance().getTimings().at("ICPFast")) / float(count + 1);
+                        icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
+
+                        time = boost::posix_time::microsec_clock::local_time();
+                        boost::posix_time::time_duration duration2(time.time_of_day());
+                        unsigned long long int tock = duration2.total_microseconds();
+
+                        meanFast = (float(count) * meanFast + (tock - tick) / 1000.0f) / float(count + 1);
                         count++;
                     }
 
@@ -203,9 +207,15 @@ int main(int argc, char * argv[])
         Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
         Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
-        TICK("ICPFast");
+        boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration duration1(time.time_of_day());
+        unsigned long long int tick = duration1.total_microseconds();
+
         icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
-        TOCK("ICPFast");
+
+        time = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration duration2(time.time_of_day());
+        unsigned long long int tock = duration2.total_microseconds();
 
         currPoseFast.topLeftCorner(3, 3) = rot;
         currPoseFast.topRightCorner(3, 1) = trans;
@@ -217,17 +227,21 @@ int main(int argc, char * argv[])
         trans = currPoseSlow.topRightCorner(3, 1);
         rot = currPoseSlow.topLeftCorner(3, 3);
 
-        TICK("ICPSlow");
+        time = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration duration3(time.time_of_day());
+        unsigned long long int ticks = duration3.total_microseconds();
+
         icpSlowdom.getIncrementalTransformation(trans, rot);
-        TOCK("ICPSlow");
+
+        time = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration duration4(time.time_of_day());
+        unsigned long long int tocks = duration4.total_microseconds();
 
         currPoseSlow.topLeftCorner(3, 3) = rot;
         currPoseSlow.topRightCorner(3, 1) = trans;
 
-        Stopwatch::getInstance().sendAll();
-
-        meanFast = (float(count) * meanFast + Stopwatch::getInstance().getTimings().at("ICPFast")) / float(count + 1);
-        meanSlow = (float(count) * meanSlow + Stopwatch::getInstance().getTimings().at("ICPSlow")) / float(count + 1);
+        meanFast = (float(count) * meanFast + (tock - tick) / 1000.0f) / float(count + 1);
+        meanSlow = (float(count) * meanSlow + (tocks - ticks) / 1000.0f) / float(count + 1);
         count++;
 
         std::cout << std::setprecision(4) << std::fixed

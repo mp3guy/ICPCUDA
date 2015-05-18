@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6.0)
 project(ICP)
 
 find_package(OpenCV REQUIRED)
-find_package(Boost COMPONENTS thread filesystem system REQUIRED)
+find_package(Boost COMPONENTS thread filesystem system date_time REQUIRED)
 find_package(CUDA REQUIRED)
 
 #remove this as soon as eigen is shipped with FindEigen.cmake

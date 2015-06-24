@@ -1,5 +1,5 @@
 # ICPCUDA
-Super fast implementation of ICP in CUDA for compute capable devices 2.0 or higher. On an nVidia GeForce GTX 780 Ti it runs at over __450Hz__ (using projective data assocation). To compile all architectures you'll need CUDA 7.0 I think, (or 6.5 with the special release for 9xx cards). You can compile for older cards by removing the unsupported architectures from the CMakeLists.txt file. 
+Super fast implementation of ICP in CUDA for compute capable devices 2.0 or higher. On an nVidia GeForce GTX 780 Ti it runs at over __540Hz__ (using projective data assocation). To compile all architectures you'll need CUDA 7.0 I think, (or 6.5 with the special release for 9xx cards). You can compile for older cards by removing the unsupported architectures from the CMakeLists.txt file. 
 
 Requires CUDA, Boost, Eigen and OpenCV. I've built it to take in raw TUM RGB-D datasets to do frame-to-frame dense ICP as an example application.
 
@@ -20,26 +20,28 @@ Where ~/Desktop/rgbd\_dataset\_freiburg1\_desk/ contains the association.txt fil
 The main idea to getting the best performance is determining the best thread/block sizes to use. I have provided an exhaustive search function to do this, since it varies between GPUs. Simply pass the "-v" switch to the program to activate the search. The code will then first do a search for the best thread/block sizes and then run both methods for ICP and output something like this on an nVidia GeForce GTX 780 Ti;
 
 ```bash
+GeForce GTX 780 Ti
 Searching for the best thread/block configuration for your GPU...
-Best: 96 threads, 128 blocks (2.1332ms), 100%   
-Fast ICP: 2.1775ms, Slow ICP: 6.3349ms
-2.9092 times faster.
+Best: 128 threads, 112 blocks (1.825ms), 100%    
+Fast ICP: 1.8486ms, Slow ICP: 6.0648ms
+3.2807 times faster. Fast ICP speed: 540Hz
 ```
 
-And something like this on an nVidia GeForce GTX 675MX;
+And something like this on an nVidia GeForce GTX 880M;
 
 ```bash
+GeForce GTX 880M
 Searching for the best thread/block configuration for your GPU...
-Best: 128 threads, 80 blocks (8.7626ms), 100%   
-Fast ICP: 8.5406ms, Slow ICP: 23.0527ms
-2.6992 times faster.
+Best: 512 threads, 16 blocks (2.8558ms), 100%    
+Fast ICP: 2.8119ms, Slow ICP: 11.0008ms
+3.9122 times faster. Fast ICP speed: 355Hz
 ```
 
 The code will output two files, fast.poses and slow.poses. You can evaluate them on the TUM benchmark by using their tools. I get something like this;
 
 ```bash
 python ~/stuff/Kinect_Logs/Freiburg/evaluate_ate.py ~/Desktop/rgbd_dataset_freiburg1_desk/groundtruth.txt fast.poses 
-0.147167
+0.147173
 python ~/stuff/Kinect_Logs/Freiburg/evaluate_ate.py ~/Desktop/rgbd_dataset_freiburg1_desk/groundtruth.txt slow.poses 
 0.147113
 ```

@@ -32,9 +32,9 @@ And something like this on an nVidia GeForce GTX 880M;
 ```bash
 GeForce GTX 880M
 Searching for the best thread/block configuration for your GPU...
-Best: 512 threads, 16 blocks (2.8558ms), 100%    
-Fast ICP: 2.8119ms, Slow ICP: 11.0008ms
-3.9122 times faster. Fast ICP speed: 355Hz
+Best: 512 threads, 16 blocks (2.9126ms), 100%    
+Fast ICP: 2.8443ms, Slow ICP: 11.0044ms
+3.8690 times faster. Fast ICP speed: 351Hz
 ```
 
 The code will output two files, fast.poses and slow.poses. You can evaluate them on the TUM benchmark by using their tools. I get something like this;

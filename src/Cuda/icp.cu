@@ -165,9 +165,6 @@ struct ICPReduction
         ukr.x = __float2int_rn (vcurr_cp.x * intr.fx / vcurr_cp.z + intr.cx);      //4
         ukr.y = __float2int_rn (vcurr_cp.y * intr.fy / vcurr_cp.z + intr.cy);                      //4
 
-        if (ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_cp.z < 0)
-            return (false);
-
         float3 nprev_g;
         nprev_g.x =  __ldg(&nmap_g_prev.ptr (ukr.y)[ukr.x]);
 
@@ -192,7 +189,7 @@ struct ICPReduction
         d = vprev_g;
         s = vcurr_g;
 
-        return (sine < angleThres && dist <= distThres && !isnan (ncurr.x) && !isnan (nprev_g.x));
+        return (sine < angleThres && dist <= distThres && !isnan (ncurr.x) && !isnan (nprev_g.x) && !(ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_cp.z < 0));
     }
 
     __device__ __forceinline__ jtjjtr
@@ -205,28 +202,15 @@ struct ICPReduction
 
         bool found_coresp = search (x, y, n, d, s);
 
-        float row[7];
+        float row[7] = {0, 0, 0, 0, 0, 0, 0};
 
-        if(found_coresp)
-        {
-            float3 s_cp = Rprev_inv * (s - tprev);         // prev camera coo space
-            float3 d_cp = Rprev_inv * (d - tprev);         // prev camera coo space
-            float3 n_cp = Rprev_inv * (n);                // prev camera coo space
+        float3 s_cp = Rprev_inv * (s - tprev);         // prev camera coo space
+        float3 d_cp = Rprev_inv * (d - tprev);         // prev camera coo space
+        float3 n_cp = Rprev_inv * (n);                // prev camera coo space
 
-            *(float3*)&row[0] = n_cp;
-            *(float3*)&row[3] = cross (s_cp, n_cp);
-            row[6] = dot (n_cp, s_cp - d_cp);
-
-            if(isnan(row[6]))
-            {
-                found_coresp = false;
-                row[0] = row[1] = row[2] = row[3] = row[4] = row[5] = row[6] = 0.f;
-            }
-        }
-        else
-        {
-            row[0] = row[1] = row[2] = row[3] = row[4] = row[5] = row[6] = 0.f;
-        }
+        *(float3*)&row[0] = n_cp * float(found_coresp);
+        *(float3*)&row[3] = cross (s_cp, n_cp) * float(found_coresp);
+        row[6] = dot (n_cp, s_cp - d_cp) * float(found_coresp);
 
         jtjjtr values = {row[0] * row[0],
                          row[0] * row[1],

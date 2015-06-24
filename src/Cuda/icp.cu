@@ -149,8 +149,6 @@ struct ICPReduction
     __device__ __forceinline__ bool
     search (int & x, int & y, float3& n, float3& d, float3& s) const
     {
-        float3 ncurr;
-        ncurr.x = nmap_curr.ptr (y)[x];
 
         float3 vcurr;
         vcurr.x = vmap_curr.ptr (y       )[x];
@@ -158,31 +156,30 @@ struct ICPReduction
         vcurr.z = vmap_curr.ptr (y + 2 * rows)[x];
 
         float3 vcurr_g = Rcurr * vcurr + tcurr;
-
         float3 vcurr_cp = Rprev_inv * (vcurr_g - tprev);         // prev camera coo space
 
         int2 ukr;         //projection
         ukr.x = __float2int_rn (vcurr_cp.x * intr.fx / vcurr_cp.z + intr.cx);      //4
         ukr.y = __float2int_rn (vcurr_cp.y * intr.fy / vcurr_cp.z + intr.cy);                      //4
 
-        float3 nprev_g;
-        nprev_g.x =  __ldg(&nmap_g_prev.ptr (ukr.y)[ukr.x]);
-
         float3 vprev_g;
         vprev_g.x = __ldg(&vmap_g_prev.ptr (ukr.y       )[ukr.x]);
         vprev_g.y = __ldg(&vmap_g_prev.ptr (ukr.y + rows)[ukr.x]);
         vprev_g.z = __ldg(&vmap_g_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
 
-        float dist = norm (vprev_g - vcurr_g);
-
+        float3 ncurr;
+        ncurr.x = nmap_curr.ptr (y)[x];
         ncurr.y = nmap_curr.ptr (y + rows)[x];
         ncurr.z = nmap_curr.ptr (y + 2 * rows)[x];
 
         float3 ncurr_g = Rcurr * ncurr;
 
+        float3 nprev_g;
+        nprev_g.x =  __ldg(&nmap_g_prev.ptr (ukr.y)[ukr.x]);
         nprev_g.y = __ldg(&nmap_g_prev.ptr (ukr.y + rows)[ukr.x]);
         nprev_g.z = __ldg(&nmap_g_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
 
+        float dist = norm (vprev_g - vcurr_g);
         float sine = norm (cross (ncurr_g, nprev_g));
 
         n = nprev_g;
@@ -198,19 +195,22 @@ struct ICPReduction
         int y = i / cols;
         int x = i - (y * cols);
 
-        float3 n, d, s;
+        float3 n_cp, d_cp, s_cp;
 
-        bool found_coresp = search (x, y, n, d, s);
+        bool found_coresp = search (x, y, n_cp, d_cp, s_cp);
 
         float row[7] = {0, 0, 0, 0, 0, 0, 0};
 
-        float3 s_cp = Rprev_inv * (s - tprev);         // prev camera coo space
-        float3 d_cp = Rprev_inv * (d - tprev);         // prev camera coo space
-        float3 n_cp = Rprev_inv * (n);                // prev camera coo space
+        if(found_coresp)
+        {
+            s_cp = Rprev_inv * (s_cp - tprev);         // prev camera coo space
+            d_cp = Rprev_inv * (d_cp - tprev);         // prev camera coo space
+            n_cp = Rprev_inv * (n_cp);                // prev camera coo space
 
-        *(float3*)&row[0] = n_cp * float(found_coresp);
-        *(float3*)&row[3] = cross (s_cp, n_cp) * float(found_coresp);
-        row[6] = dot (n_cp, s_cp - d_cp) * float(found_coresp);
+            *(float3*)&row[0] = n_cp;
+            *(float3*)&row[3] = cross (s_cp, n_cp);
+            row[6] = dot (n_cp, s_cp - d_cp);
+        }
 
         jtjjtr values = {row[0] * row[0],
                          row[0] * row[1],

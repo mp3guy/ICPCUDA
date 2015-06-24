@@ -261,7 +261,7 @@ int main(int argc, char * argv[])
 
     std::cout << std::endl;
 
-    std::cout << meanSlow / meanFast << " times faster." << std::endl;
+    std::cout << meanSlow / meanFast << " times faster. Fast ICP speed: " << int(1000.f / meanFast) << "Hz" << std::endl;
 
     return 0;
 }

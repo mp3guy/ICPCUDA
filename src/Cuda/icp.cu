@@ -149,7 +149,6 @@ struct ICPReduction
     __device__ __forceinline__ bool
     search (int & x, int & y, float3& n, float3& d, float3& s) const
     {
-
         float3 vcurr;
         vcurr.x = vmap_curr.ptr (y       )[x];
         vcurr.y = vmap_curr.ptr (y + rows)[x];
@@ -161,6 +160,9 @@ struct ICPReduction
         int2 ukr;         //projection
         ukr.x = __float2int_rn (vcurr_cp.x * intr.fx / vcurr_cp.z + intr.cx);      //4
         ukr.y = __float2int_rn (vcurr_cp.y * intr.fy / vcurr_cp.z + intr.cy);                      //4
+
+        if(ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_cp.z < 0)
+            return false;
 
         float3 vprev_g;
         vprev_g.x = __ldg(&vmap_g_prev.ptr (ukr.y       )[ukr.x]);
@@ -186,7 +188,7 @@ struct ICPReduction
         d = vprev_g;
         s = vcurr_g;
 
-        return (sine < angleThres && dist <= distThres && !isnan (ncurr.x) && !isnan (nprev_g.x) && !(ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_cp.z < 0));
+        return (sine < angleThres && dist <= distThres && !isnan (ncurr.x) && !isnan (nprev_g.x));
     }
 
     __device__ __forceinline__ jtjjtr

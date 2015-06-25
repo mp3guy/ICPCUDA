@@ -12,19 +12,19 @@ The fast ICP implementation, which is my own, essentially exploits the shlf inst
 Run like;
 
 ```bash
-./ICP ~/Desktop/rgbd_dataset_freiburg1_desk/
+./ICP ~/Desktop/rgbd_dataset_freiburg1_desk/ -v
 ```
 
-Where ~/Desktop/rgbd\_dataset\_freiburg1\_desk/ contains the association.txt file with rgb first and depth second, for more information see [here](http://vision.in.tum.de/data/datasets/rgbd-dataset).
+Where ~/Desktop/rgbd\_dataset\_freiburg1\_desk/ contains the depth.txt file, for more information see [here](http://vision.in.tum.de/data/datasets/rgbd-dataset).
 
 The main idea to getting the best performance is determining the best thread/block sizes to use. I have provided an exhaustive search function to do this, since it varies between GPUs. Simply pass the "-v" switch to the program to activate the search. The code will then first do a search for the best thread/block sizes and then run both methods for ICP and output something like this on an nVidia GeForce GTX 780 Ti;
 
 ```bash
 GeForce GTX 780 Ti
 Searching for the best thread/block configuration for your GPU...
-Best: 128 threads, 112 blocks (1.8554ms), 100%    
-Fast ICP: 1.8857ms, Slow ICP: 6.0539ms
-3.2103 times faster. Fast ICP speed: 530Hz
+Best: 128 threads, 112 blocks (1.8618ms), 100%    
+Fast ICP: 1.8824ms, Slow ICP: 6.0521ms
+3.2152 times faster. Fast ICP speed: 531Hz
 ```
 
 And something like this on an nVidia GeForce GTX 880M;
@@ -41,9 +41,9 @@ The code will output two files, fast.poses and slow.poses. You can evaluate them
 
 ```bash
 python ~/stuff/Kinect_Logs/Freiburg/evaluate_ate.py ~/Desktop/rgbd_dataset_freiburg1_desk/groundtruth.txt fast.poses 
-0.147173
+0.143871
 python ~/stuff/Kinect_Logs/Freiburg/evaluate_ate.py ~/Desktop/rgbd_dataset_freiburg1_desk/groundtruth.txt slow.poses 
-0.147113
+0.143993
 ```
 
 The difference in values comes down to the fact that each method uses a different reduction scheme and floating point operations are [not associative](https://halshs.archives-ouvertes.fr/hal-00949355v1/document).

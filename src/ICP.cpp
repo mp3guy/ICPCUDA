@@ -28,14 +28,17 @@ uint64_t loadDepth(cv::Mat1w & depth)
     std::vector<std::string> tokens;
     std::vector<std::string> timeTokens;
 
-    getline(asFile, currentLine);
-    tokenize(currentLine, tokens);
+    do
+    {
+        getline(asFile, currentLine);
+        tokenize(currentLine, tokens);
+    } while(tokens.size() > 2);
 
     if(tokens.size() == 0)
         return 0;
 
     std::string depthLoc = directory;
-    depthLoc.append(tokens[3]);
+    depthLoc.append(tokens[1]);
     depth = cv::imread(depthLoc, CV_LOAD_IMAGE_ANYDEPTH);
 
     tokenize(tokens[0], timeTokens, ".");
@@ -80,7 +83,7 @@ void outputFreiburg(const std::string filename, const int64_t & timestamp, const
 
 int main(int argc, char * argv[])
 {
-    assert((argc == 2 || argc == 3) && "Please supply the association file dir as the first argument");
+    assert((argc == 2 || argc == 3) && "Please supply the depth.txt dir as the first argument");
 
     directory.append(argv[1]);
 
@@ -90,7 +93,7 @@ int main(int argc, char * argv[])
     }
 
     std::string associationFile = directory;
-    associationFile.append("association.txt");
+    associationFile.append("depth.txt");
 
     asFile.open(associationFile.c_str());
 

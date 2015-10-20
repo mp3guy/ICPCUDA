@@ -66,3 +66,20 @@ target_link_libraries(ICP
   ${CUDA_LIBRARIES}
 )
 
+install(
+  TARGETS icpcuda
+  DESTINATION lib
+)
+
+install(
+  DIRECTORY src/
+  DESTINATION include/icpcuda
+  FILES_MATCHING PATTERN "*.h"
+)
+
+install(
+  DIRECTORY src/
+  DESTINATION include/icpcuda
+  FILES_MATCHING PATTERN "*.hpp"
+)
+

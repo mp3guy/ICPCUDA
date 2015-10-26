@@ -117,10 +117,9 @@ void ICPOdometry::initICPModel(const DeviceArray2D<unsigned short>& depth,
     Mat33 &  device_Rcam = device_cast<Mat33>(Rcam);
     float3& device_tcam = device_cast<float3>(tcam);
 
-    for(int i = 0; i < NUM_PYRS; ++i)
-    {
+    if (modelPose != Eigen::Matrix4f::Identity())
+      for(int i = 0; i < NUM_PYRS; ++i)
         tranformMaps(vmaps_g_prev_[i], nmaps_g_prev_[i], device_Rcam, device_tcam, vmaps_g_prev_[i], nmaps_g_prev_[i]);
-    }
 
     cudaDeviceSynchronize();
 }

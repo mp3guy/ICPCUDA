@@ -5,7 +5,7 @@
  *      Author: thomas
  */
 
-#include "ICPSlowdometry.h"
+#include "icpcuda/ICPSlowdometry.h"
 
 ICPSlowdometry::ICPSlowdometry(int width,
                            int height,

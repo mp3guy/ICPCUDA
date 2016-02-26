@@ -35,9 +35,9 @@
  *
  */
 
-#include "internal.h"
-#include "vector_math.hpp"
-#include "containers/safe_call.hpp"
+#include "icpcuda/Cuda/internal.h"
+#include "icpcuda/Cuda/vector_math.hpp"
+#include "icpcuda/Cuda/containers/safe_call.hpp"
 
 __global__ void pyrDownGaussKernel (const PtrStepSz<unsigned short> src, PtrStepSz<unsigned short> dst, float sigma_color)
 {

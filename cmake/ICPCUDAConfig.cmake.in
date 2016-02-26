@@ -1,0 +1,25 @@
+# Configuration for package "ICPCUDA"
+include(CMakeFindDependencyMacro)
+find_dependency(Eigen) # 3.2.0
+find_dependency(OpenCV)
+find_dependency(Boost)
+find_dependency(CUDA)
+
+
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/ICPCUDATargets.cmake")
+
+set_and_check(FOO_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
+set_and_check(FOO_SYSCONFIG_DIR "@PACKAGE_SYSCONFIG_INSTALL_DIR@")
+check_required_components(Foo)
+
+set(_supported_components Devel)
+
+foreach(_comp ${ICPCUDA_FIND_COMPONENTS})
+  if (NOT ";${_supported_components};" MATCHES _comp)
+    set(ICPCUDA_FOUND False)
+    set(ICPCUDA_NOTFOUND_MESSAGE "Unsupported component: ${_comp}")
+  endif()
+  include("${CMAKE_CURRENT_LIST_DIR}/ICPCUDA${_comp}Targets.cmake")
+endforeach()

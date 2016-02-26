@@ -9,7 +9,7 @@
 #define ICPODOMETRY_H_
 
 #include "Cuda/internal.h"
-#include "OdometryProvider.h"
+#include "icpcuda/OdometryProvider.h"
 
 #include <opencv2/opencv.hpp>
 #include <vector>

@@ -63,6 +63,12 @@ ICPOdometry::~ICPOdometry()
 void ICPOdometry::initICP(unsigned short * depth, const float depthCutoff)
 {
     depth_tmp[0].upload(depth, sizeof(unsigned short) * width, height, width);
+    initICP(depth_tmp[0], depthCutoff);
+}
+
+void ICPOdometry::initICP(const DeviceArray2D<unsigned short>& depth, const float depthCutoff)
+{
+    depth_tmp[0] = depth;
 
     for(int i = 1; i < NUM_PYRS; ++i)
     {
@@ -83,6 +89,14 @@ void ICPOdometry::initICPModel(unsigned short * depth,
                                const Eigen::Matrix4f & modelPose)
 {
     depth_tmp[0].upload(depth, sizeof(unsigned short) * width, height, width);
+    initICPModel(depth_tmp[0], depthCutoff, modelPose);
+}
+
+void ICPOdometry::initICPModel(const DeviceArray2D<unsigned short>& depth,
+                               const float depthCutoff,
+                               const Eigen::Matrix4f & modelPose)
+{
+    depth_tmp[0] = depth;
 
     for(int i = 1; i < NUM_PYRS; ++i)
     {
@@ -103,10 +117,9 @@ void ICPOdometry::initICPModel(unsigned short * depth,
     Mat33 &  device_Rcam = device_cast<Mat33>(Rcam);
     float3& device_tcam = device_cast<float3>(tcam);
 
-    for(int i = 0; i < NUM_PYRS; ++i)
-    {
+    if (modelPose != Eigen::Matrix4f::Identity())
+      for(int i = 0; i < NUM_PYRS; ++i)
         tranformMaps(vmaps_g_prev_[i], nmaps_g_prev_[i], device_Rcam, device_tcam, vmaps_g_prev_[i], nmaps_g_prev_[i]);
-    }
 
     cudaDeviceSynchronize();
 }

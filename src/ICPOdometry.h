@@ -35,7 +35,11 @@ class ICPOdometry
 
         void initICP(unsigned short * depth, const float depthCutoff);
 
+        void initICP(const DeviceArray2D<unsigned short>& depth, const float depthCutoff);
+
         void initICPModel(unsigned short * depth, const float depthCutoff, const Eigen::Matrix4f & modelPose);
+
+        void initICPModel(const DeviceArray2D<unsigned short>& depth, const float depthCutoff, const Eigen::Matrix4f & modelPose);
 
         void getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot, int threads, int blocks);
 

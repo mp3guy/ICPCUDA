@@ -3,6 +3,7 @@
 
 #include <iomanip>
 #include <fstream>
+#include <chrono>
 
 std::ifstream asFile;
 std::string directory;
@@ -83,6 +84,7 @@ void outputFreiburg(const std::string filename, const int64_t & timestamp, const
 
 int main(int argc, char * argv[])
 {
+    namespace ch = std::chrono;
     assert((argc == 2 || argc == 3) && "Please supply the depth.txt dir as the first argument");
 
     directory.append(argv[1]);
@@ -163,17 +165,11 @@ int main(int argc, char * argv[])
                         Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
                         Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
-                        boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
-                        boost::posix_time::time_duration duration1(time.time_of_day());
-                        unsigned long long int tick = duration1.total_microseconds();
-
+                        auto tick = ch::high_resolution_clock::now();
                         icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
+                        auto tock = ch::high_resolution_clock::now();
 
-                        time = boost::posix_time::microsec_clock::local_time();
-                        boost::posix_time::time_duration duration2(time.time_of_day());
-                        unsigned long long int tock = duration2.total_microseconds();
-
-                        meanFast = (float(count) * meanFast + (tock - tick) / 1000.0f) / float(count + 1);
+                        meanFast = (float(count) * meanFast + ch::duration_cast< ch::milliseconds >(tock-tick).count()) / float(count + 1);
                         count++;
                     }
 
@@ -210,15 +206,9 @@ int main(int argc, char * argv[])
         Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
         Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
 
-        boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration1(time.time_of_day());
-        unsigned long long int tick = duration1.total_microseconds();
-
+        auto tick_fast = ch::high_resolution_clock::now();
         icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
-
-        time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration2(time.time_of_day());
-        unsigned long long int tock = duration2.total_microseconds();
+        auto tock_fast = ch::high_resolution_clock::now();
 
         currPoseFast.topLeftCorner(3, 3) = rot;
         currPoseFast.topRightCorner(3, 1) = trans;
@@ -230,21 +220,15 @@ int main(int argc, char * argv[])
         trans = currPoseSlow.topRightCorner(3, 1);
         rot = currPoseSlow.topLeftCorner(3, 3);
 
-        time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration3(time.time_of_day());
-        unsigned long long int ticks = duration3.total_microseconds();
-
+        auto tick_slow = ch::high_resolution_clock::now();
         icpSlowdom.getIncrementalTransformation(trans, rot);
-
-        time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration4(time.time_of_day());
-        unsigned long long int tocks = duration4.total_microseconds();
+        auto tock_slow = ch::high_resolution_clock::now();
 
         currPoseSlow.topLeftCorner(3, 3) = rot;
         currPoseSlow.topRightCorner(3, 1) = trans;
 
-        meanFast = (float(count) * meanFast + (tock - tick) / 1000.0f) / float(count + 1);
-        meanSlow = (float(count) * meanSlow + (tocks - ticks) / 1000.0f) / float(count + 1);
+        meanFast = (float(count) * meanFast + ch::duration_cast< ch::milliseconds >(tock_fast - tick_fast).count()) / float(count + 1);
+        meanSlow = (float(count) * meanSlow + ch::duration_cast< ch::milliseconds >(tock_slow - tick_slow).count()) / float(count + 1);
         count++;
 
         std::cout << std::setprecision(4) << std::fixed
@@ -264,7 +248,7 @@ int main(int argc, char * argv[])
 
     std::cout << std::endl;
 
-    std::cout << meanSlow / meanFast << " times faster. Fast ICP speed: " << int(1000.f / meanFast) << "Hz" << std::endl;
+    std::cout << meanSlow / meanFast << " times faster." << std::endl;
 
     return 0;
 }

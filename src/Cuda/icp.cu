@@ -1,6 +1,6 @@
-#include "internal.h"
-#include "vector_math.hpp"
-#include "containers/safe_call.hpp"
+#include "icpcuda/Cuda/internal.h"
+#include "icpcuda/Cuda/vector_math.hpp"
+#include "icpcuda/Cuda/containers/safe_call.hpp"
 
 #if __CUDA_ARCH__ < 300
 __inline__ __device__

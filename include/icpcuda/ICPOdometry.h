@@ -9,7 +9,7 @@
 #define ICPODOMETRY_H_
 
 #include "Cuda/internal.h"
-#include "OdometryProvider.h"
+#include "icpcuda/OdometryProvider.h"
 
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -35,7 +35,11 @@ class ICPOdometry
 
         void initICP(unsigned short * depth, const float depthCutoff);
 
+        void initICP(const DeviceArray2D<unsigned short>& depth, const float depthCutoff);
+
         void initICPModel(unsigned short * depth, const float depthCutoff, const Eigen::Matrix4f & modelPose);
+
+        void initICPModel(const DeviceArray2D<unsigned short>& depth, const float depthCutoff, const Eigen::Matrix4f & modelPose);
 
         void getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot, int threads, int blocks);
 

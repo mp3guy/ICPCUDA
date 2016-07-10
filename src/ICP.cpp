@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <fstream>
 #include <chrono>
+#include <pangolin/image/image_io.h>
 
 std::ifstream asFile;
 std::string directory;
@@ -22,7 +23,7 @@ void tokenize(const std::string & str, std::vector<std::string> & tokens, std::s
     }
 }
 
-uint64_t loadDepth(cv::Mat1w & depth)
+uint64_t loadDepth(pangolin::Image<unsigned short> & depth)
 {
     std::string currentLine;
     std::vector<std::string> tokens;
@@ -39,7 +40,8 @@ uint64_t loadDepth(cv::Mat1w & depth)
 
     std::string depthLoc = directory;
     depthLoc.append(tokens[1]);
-    depth = cv::imread(depthLoc, CV_LOAD_IMAGE_ANYDEPTH);
+
+    pangolin::TypedImage depthRaw = pangolin::LoadImage(depthLoc, pangolin::ImageFileTypePng);
 
     tokenize(tokens[0], timeTokens, ".");
 
@@ -53,14 +55,16 @@ uint64_t loadDepth(cv::Mat1w & depth)
     {
         for(unsigned int j = 0; j < 640; j++)
         {
-            depth.at<unsigned short>(i, j) /= 5;
+            depth.RowPtr(i)[j] = depthRaw.Reinterpret<unsigned short>().RowPtr(i)[j] / 5;
         }
     }
+
+    depthRaw.Dealloc();
 
     return time;
 }
 
-void outputFreiburg(const std::string filename, const int64_t & timestamp, const Eigen::Matrix4f & currentPose)
+void outputFreiburg(const std::string filename, const uint64_t & timestamp, const Eigen::Matrix4f & currentPose)
 {
     std::ofstream file;
     file.open(filename.c_str(), std::fstream::app);
@@ -102,10 +106,15 @@ int main(int argc, char * argv[])
 
     asFile.open(associationFile.c_str());
 
-    cv::Mat1w firstRaw(480, 640);
-    cv::Mat1w secondRaw(480, 640);
+    pangolin::TypedImage firstData;
+    pangolin::TypedImage secondData;
+    firstData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
+    secondData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
 
-    ICPOdometry icpOdom(640, 480, 320, 240, 528, 528);
+    pangolin::Image<unsigned short> firstRaw(firstData.w, firstData.h, firstData.pitch, (unsigned short*)firstData.ptr);
+    pangolin::Image<unsigned short> secondRaw(secondData.w, secondData.h, secondData.pitch, (unsigned short*)secondData.ptr);
+
+    ICPOdometry icpOdom(640, 480, 319.5, 239.5, 528, 528);
 
     assert(!asFile.eof() && asFile.is_open());
 
@@ -157,10 +166,10 @@ int main(int argc, char * argv[])
 
                     for(int i = 0; i < 5; i++)
                     {
-                        icpOdom.initICPModel((unsigned short *)firstRaw.data);
-                        icpOdom.initICP((unsigned short *)secondRaw.data);
+                        icpOdom.initICPModel(firstRaw.ptr);
+                        icpOdom.initICP(secondRaw.ptr);
 
-                        unsigned long long int tick = getCurrTime();
+                        uint64_t tick = getCurrTime();
 
                         T_wc_prev = T_wc_curr;
 
@@ -170,7 +179,7 @@ int main(int argc, char * argv[])
 
                         T_wc_curr = T_wc_prev * T_prev_curr;
 
-                        unsigned long long int tock = getCurrTime();
+                        uint64_t tock = getCurrTime();
 
                         mean = (float(count) * mean + (tock - tick) / 1000.0f) / float(count + 1);
                         count++;
@@ -204,10 +213,10 @@ int main(int argc, char * argv[])
 
     while(!asFile.eof())
     {
-        icpOdom.initICPModel((unsigned short *)firstRaw.data);
-        icpOdom.initICP((unsigned short *)secondRaw.data);
+        icpOdom.initICPModel(firstRaw.ptr);
+        icpOdom.initICP(secondRaw.ptr);
 
-        unsigned long long int tick = getCurrTime();
+        uint64_t tick = getCurrTime();
 
         T_wc_prev = T_wc_curr;
 
@@ -217,14 +226,14 @@ int main(int argc, char * argv[])
 
         T_wc_curr = T_wc_prev * T_prev_curr;
 
-        unsigned long long int tock = getCurrTime();
+        uint64_t tock = getCurrTime();
 
         mean = (float(count) * mean + (tock - tick) / 1000.0f) / float(count + 1);
         count++;
 
         std::cout << std::setprecision(4) << std::fixed
-                  << "\r ICP: "
-                  << mean;
+                  << "\rICP: "
+                  << mean << "ms";
                   std::cout.flush();
 
         std::swap(firstRaw, secondRaw);
@@ -237,6 +246,9 @@ int main(int argc, char * argv[])
     std::cout << std::endl;
 
     std::cout << "ICP speed: " << int(1000.f / mean) << "Hz" << std::endl;
+
+    firstData.Dealloc();
+    secondData.Dealloc();
 
     return 0;
 }

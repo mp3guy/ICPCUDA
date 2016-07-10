@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6.0)
 
 project(ICP)
 
-find_package(OpenCV REQUIRED)
+find_package(Pangolin REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(Sophus REQUIRED)
 
@@ -21,7 +21,7 @@ find_package(Sophus REQUIRED)
   set(EIGEN_DEFINITIONS ${EIGEN_DEFINITIONS} -DEIGEN_USE_NEW_STDVECTOR 
       -DEIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET)
       
-include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(${Pangolin_INCLUDE_DIRS})
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${EIGEN_INCLUDE_DIRS})
 include_directories(${Sophus_INCLUDE_DIR})
@@ -52,7 +52,7 @@ add_executable(ICP
 )
 
 target_link_libraries(ICP
-                      ${OpenCV_LIBS}
+                      ${Pangolin_LIBRARIES}
                       ${Eigen_LIBRARIES}
                       ${CUDA_LIBRARIES}
 )

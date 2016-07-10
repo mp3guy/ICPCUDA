@@ -69,54 +69,23 @@ struct Intr
 
 struct jtjjtr
 {
-    //27 floats for each product (27)
-    float aa, ab, ac, ad, ae, af, ag,
-              bb, bc, bd, be, bf, bg,
-                  cc, cd, ce, cf, cg,
-                      dd, de, df, dg,
-                          ee, ef, eg,
-                              ff, fg;
+    float data[29];
 
-    //Extra data needed (29)
-    float residual, inliers;
-
-    __device__ inline void add(const jtjjtr & a)
+    __device__ inline float& operator[](const size_t idx)
     {
-        aa += a.aa;
-        ab += a.ab;
-        ac += a.ac;
-        ad += a.ad;
-        ae += a.ae;
-        af += a.af;
-        ag += a.ag;
+        return data[idx];
+    }
 
-        bb += a.bb;
-        bc += a.bc;
-        bd += a.bd;
-        be += a.be;
-        bf += a.bf;
-        bg += a.bg;
-
-        cc += a.cc;
-        cd += a.cd;
-        ce += a.ce;
-        cf += a.cf;
-        cg += a.cg;
-
-        dd += a.dd;
-        de += a.de;
-        df += a.df;
-        dg += a.dg;
-
-        ee += a.ee;
-        ef += a.ef;
-        eg += a.eg;
-
-        ff += a.ff;
-        fg += a.fg;
-
-        residual += a.residual;
-        inliers += a.inliers;
+    __device__ inline jtjjtr& operator+=(const jtjjtr& a)
+    {
+#ifdef __CUDACC__
+        #pragma unroll
+#endif
+        for(int i = 0; i < 29; i++)
+        {
+            data[i] += a.data[i];
+        }
+        return *this;
     }
 };
 

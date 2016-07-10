@@ -23,51 +23,19 @@ __device__ __forceinline__ T __ldg(const T* ptr)
 }
 #endif
 
-__inline__  __device__ jtjjtr warpReduceSum(jtjjtr val)
+__inline__  __device__ void warpReduceSum(jtjjtr & val)
 {
     for(int offset = warpSize / 2; offset > 0; offset /= 2)
     {
-        val.aa += __shfl_down(val.aa, offset);
-        val.ab += __shfl_down(val.ab, offset);
-        val.ac += __shfl_down(val.ac, offset);
-        val.ad += __shfl_down(val.ad, offset);
-        val.ae += __shfl_down(val.ae, offset);
-        val.af += __shfl_down(val.af, offset);
-        val.ag += __shfl_down(val.ag, offset);
-
-        val.bb += __shfl_down(val.bb, offset);
-        val.bc += __shfl_down(val.bc, offset);
-        val.bd += __shfl_down(val.bd, offset);
-        val.be += __shfl_down(val.be, offset);
-        val.bf += __shfl_down(val.bf, offset);
-        val.bg += __shfl_down(val.bg, offset);
-
-        val.cc += __shfl_down(val.cc, offset);
-        val.cd += __shfl_down(val.cd, offset);
-        val.ce += __shfl_down(val.ce, offset);
-        val.cf += __shfl_down(val.cf, offset);
-        val.cg += __shfl_down(val.cg, offset);
-
-        val.dd += __shfl_down(val.dd, offset);
-        val.de += __shfl_down(val.de, offset);
-        val.df += __shfl_down(val.df, offset);
-        val.dg += __shfl_down(val.dg, offset);
-
-        val.ee += __shfl_down(val.ee, offset);
-        val.ef += __shfl_down(val.ef, offset);
-        val.eg += __shfl_down(val.eg, offset);
-
-        val.ff += __shfl_down(val.ff, offset);
-        val.fg += __shfl_down(val.fg, offset);
-
-        val.residual += __shfl_down(val.residual, offset);
-        val.inliers += __shfl_down(val.inliers, offset);
+        #pragma unroll
+        for(int i = 0; i < 29; i++)
+        {
+            val[i] += __shfl_down(val[i], offset);
+        }
     }
-
-    return val;
 }
 
-__inline__  __device__ jtjjtr blockReduceSum(jtjjtr val)
+__inline__  __device__ void blockReduceSum(jtjjtr & val)
 {
     static __shared__ jtjjtr shared[32];
 
@@ -75,7 +43,7 @@ __inline__  __device__ jtjjtr blockReduceSum(jtjjtr val)
 
     int wid = threadIdx.x / warpSize;
 
-    val = warpReduceSum(val);
+    warpReduceSum(val);
 
     //write reduced value to shared memory
     if(lane == 0)
@@ -94,10 +62,8 @@ __inline__  __device__ jtjjtr blockReduceSum(jtjjtr val)
 
     if(wid == 0)
     {
-        val = warpReduceSum(val);
+        warpReduceSum(val);
     }
-
-    return val;
 }
 
 __global__ void reduceSum(jtjjtr * in, jtjjtr * out, int N)
@@ -109,10 +75,10 @@ __global__ void reduceSum(jtjjtr * in, jtjjtr * out, int N)
 
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
     {
-        sum.add(in[i]);
+        sum += in[i];
     }
 
-    sum = blockReduceSum(sum);
+    blockReduceSum(sum);
 
     if(threadIdx.x == 0)
     {
@@ -185,63 +151,39 @@ struct ICPReduction
         return (sine < angleThres && dist <= distThres && !isnan(n_curr(0)) && !isnan(n_prev(0)));
     }
 
-    __device__ __forceinline__ jtjjtr
-    getProducts(int & i) const
+    //And now for some template metaprogramming magic
+    template<int outer, int inner, int end>
+    struct SquareUpperTriangularProduct
     {
-        int y = i / cols;
-        int x = i - (y * cols);
-
-        Eigen::Matrix<float,3,1,Eigen::DontAlign> n, d, s;
-
-        bool found_coresp = search(x, y, n, d, s);
-
-        float row[7] = {0, 0, 0, 0, 0, 0, 0};
-
-        if(found_coresp)
+        __device__ __forceinline__ static void apply(jtjjtr & values, const float (&rows)[end + 1])
         {
-            *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[0] = n;
-            *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[3] = s.cross(n);
-            row[6] = n.dot(d - s);
+            values[((end + 1) * outer) + inner - (outer * (outer + 1) / 2)] = rows[outer] * rows[inner];
+
+            SquareUpperTriangularProduct<outer, inner + 1, end>::apply(values, rows);
         }
+    };
 
-        jtjjtr values = {row[0] * row[0],
-                         row[0] * row[1],
-                         row[0] * row[2],
-                         row[0] * row[3],
-                         row[0] * row[4],
-                         row[0] * row[5],
-                         row[0] * row[6],
+    //Inner loop base
+    template<int outer, int end>
+    struct SquareUpperTriangularProduct<outer, end, end>
+    {
+        __device__ __forceinline__ static void apply(jtjjtr & values, const float (&rows)[end + 1])
+        {
+            values[((end + 1) * outer) + end - (outer * (outer + 1) / 2)] = rows[outer] * rows[end];
 
-                         row[1] * row[1],
-                         row[1] * row[2],
-                         row[1] * row[3],
-                         row[1] * row[4],
-                         row[1] * row[5],
-                         row[1] * row[6],
+            SquareUpperTriangularProduct<outer + 1, outer + 1, end>::apply(values, rows);
+        }
+    };
 
-                         row[2] * row[2],
-                         row[2] * row[3],
-                         row[2] * row[4],
-                         row[2] * row[5],
-                         row[2] * row[6],
-
-                         row[3] * row[3],
-                         row[3] * row[4],
-                         row[3] * row[5],
-                         row[3] * row[6],
-
-                         row[4] * row[4],
-                         row[4] * row[5],
-                         row[4] * row[6],
-
-                         row[5] * row[5],
-                         row[5] * row[6],
-
-                         row[6] * row[6],
-                         found_coresp};
-
-        return values;
-    }
+    //Outer loop base
+    template<int end>
+    struct SquareUpperTriangularProduct<end, end, end>
+    {
+        __device__ __forceinline__ static void apply(jtjjtr & values, const float (&rows)[end + 1])
+        {
+            values[((end + 1) * end) + end - (end * (end + 1) / 2)] = rows[end] * rows[end];
+        }
+    };
 
     __device__ __forceinline__ void
     operator () () const
@@ -251,14 +193,34 @@ struct ICPReduction
                       0, 0, 0, 0, 0, 0, 0, 0,
                       0, 0, 0, 0, 0};
 
+        SquareUpperTriangularProduct<0, 0, 6> sutp;
+
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
         {
-            jtjjtr val = getProducts(i);
+            int y = i / cols;
+            int x = i - (y * cols);
 
-            sum.add(val);
+            Eigen::Matrix<float,3,1,Eigen::DontAlign> n, d, s;
+
+            bool found = search(x, y, n, d, s);
+
+            float row[7] = {0, 0, 0, 0, 0, 0, 0};
+
+            if(found)
+            {
+                *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[0] = n;
+                *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[3] = s.cross(n);
+                row[6] = n.dot(d - s);
+            }
+
+            jtjjtr values;
+
+            sutp.apply(values, row);
+
+            sum += values;
         }
 
-        sum = blockReduceSum(sum);
+        blockReduceSum(sum);
 
         if(threadIdx.x == 0)
         {

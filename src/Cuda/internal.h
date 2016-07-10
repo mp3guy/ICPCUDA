@@ -123,19 +123,13 @@ struct jtjjtr
     }
 };
 
-void estimateCombined(const Mat33& Rcurr, const float3& tcurr, const DeviceArray2D<float>& vmap_curr, const DeviceArray2D<float>& nmap_curr, const Mat33& Rprev_inv, const float3& tprev, const Intr& intr,
-                      const DeviceArray2D<float>& vmap_g_prev, const DeviceArray2D<float>& nmap_g_prev, float distThres, float angleThres,
-                      DeviceArray2D<float>& gbuf, DeviceArray<float>& mbuf, float* matrixA_host, float* vectorB_host, float * residual_host);
-
-void icpStep(const Mat33& Rcurr,
-             const float3& tcurr,
+void icpStep(const Mat33& R_prev_curr,
+             const float3& t_prev_curr,
              const DeviceArray2D<float>& vmap_curr,
              const DeviceArray2D<float>& nmap_curr,
-             const Mat33& Rprev_inv,
-             const float3& tprev,
              const Intr& intr,
-             const DeviceArray2D<float>& vmap_g_prev,
-             const DeviceArray2D<float>& nmap_g_prev,
+             const DeviceArray2D<float>& vmap_prev,
+             const DeviceArray2D<float>& nmap_prev,
              float distThres,
              float angleThres,
              DeviceArray<jtjjtr> & sum,
@@ -146,17 +140,9 @@ void icpStep(const Mat33& Rcurr,
              int threads, int blocks);
 
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);
+
 void createVMap(const Intr& intr, const DeviceArray2D<unsigned short> & depth, DeviceArray2D<float> & vmap, const float depthCutoff);
 void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap);
-void tranformMaps(const DeviceArray2D<float>& vmap_src,
-                  const DeviceArray2D<float>& nmap_src,
-                  const Mat33& Rmat, const float3& tvec,
-                  DeviceArray2D<float>& vmap_dst, DeviceArray2D<float>& nmap_dst);
-
-void copyMaps(const DeviceArray<float>& vmap_src,
-              const DeviceArray<float>& nmap_src,
-              DeviceArray2D<float>& vmap_dst,
-              DeviceArray2D<float>& nmap_dst);
 
 void resizeVMap(const DeviceArray2D<float>& input, DeviceArray2D<float>& output);
 void resizeNMap(const DeviceArray2D<float>& input, DeviceArray2D<float>& output);

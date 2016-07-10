@@ -5,6 +5,7 @@ project(ICP)
 find_package(OpenCV REQUIRED)
 find_package(Boost COMPONENTS thread filesystem system date_time REQUIRED)
 find_package(CUDA REQUIRED)
+find_package(Sophus REQUIRED)
 
 #remove this as soon as eigen is shipped with FindEigen.cmake
   get_filename_component(EIGEN_ROOT "/usr/include/eigen3" PATH)
@@ -25,6 +26,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${EIGEN_INCLUDE_DIRS})
+include_directories(${Sophus_INCLUDE_DIR})
 
 file(GLOB srcs *.cpp)
 file(GLOB cuda Cuda/*.cu)

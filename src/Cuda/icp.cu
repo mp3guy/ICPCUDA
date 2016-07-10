@@ -123,19 +123,16 @@ __global__ void reduceSum(jtjjtr * in, jtjjtr * out, int N)
 
 struct ICPReduction
 {
-    Mat33 Rcurr;
-    float3 tcurr;
+    Mat33 R_prev_curr;
+    float3 t_prev_curr;
 
     PtrStep<float> vmap_curr;
     PtrStep<float> nmap_curr;
 
-    Mat33 Rprev_inv;
-    float3 tprev;
-
     Intr intr;
 
-    PtrStep<float> vmap_g_prev;
-    PtrStep<float> nmap_g_prev;
+    PtrStep<float> vmap_prev;
+    PtrStep<float> nmap_prev;
 
     float distThres;
     float angleThres;
@@ -149,46 +146,45 @@ struct ICPReduction
     __device__ __forceinline__ bool
     search (int & x, int & y, float3& n, float3& d, float3& s) const
     {
-        float3 vcurr;
-        vcurr.x = vmap_curr.ptr (y       )[x];
-        vcurr.y = vmap_curr.ptr (y + rows)[x];
-        vcurr.z = vmap_curr.ptr (y + 2 * rows)[x];
+        float3 v_curr;
+        v_curr.x = vmap_curr.ptr (y       )[x];
+        v_curr.y = vmap_curr.ptr (y + rows)[x];
+        v_curr.z = vmap_curr.ptr (y + 2 * rows)[x];
 
-        float3 vcurr_g = Rcurr * vcurr + tcurr;
-        float3 vcurr_cp = Rprev_inv * (vcurr_g - tprev);         // prev camera coo space
+        float3 v_curr_in_prev = R_prev_curr * v_curr + t_prev_curr;
 
-        int2 ukr;         //projection
-        ukr.x = __float2int_rn (vcurr_cp.x * intr.fx / vcurr_cp.z + intr.cx);      //4
-        ukr.y = __float2int_rn (vcurr_cp.y * intr.fy / vcurr_cp.z + intr.cy);                      //4
+        int2 ukr;
+        ukr.x = __float2int_rn (v_curr_in_prev.x * intr.fx / v_curr_in_prev.z + intr.cx);
+        ukr.y = __float2int_rn (v_curr_in_prev.y * intr.fy / v_curr_in_prev.z + intr.cy);
 
-        if(ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_cp.z < 0)
+        if(ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || v_curr_in_prev.z < 0)
             return false;
 
-        float3 vprev_g;
-        vprev_g.x = __ldg(&vmap_g_prev.ptr (ukr.y       )[ukr.x]);
-        vprev_g.y = __ldg(&vmap_g_prev.ptr (ukr.y + rows)[ukr.x]);
-        vprev_g.z = __ldg(&vmap_g_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
+        float3 v_prev;
+        v_prev.x = __ldg(&vmap_prev.ptr (ukr.y       )[ukr.x]);
+        v_prev.y = __ldg(&vmap_prev.ptr (ukr.y + rows)[ukr.x]);
+        v_prev.z = __ldg(&vmap_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
 
-        float3 ncurr;
-        ncurr.x = nmap_curr.ptr (y)[x];
-        ncurr.y = nmap_curr.ptr (y + rows)[x];
-        ncurr.z = nmap_curr.ptr (y + 2 * rows)[x];
+        float3 n_curr;
+        n_curr.x = nmap_curr.ptr (y)[x];
+        n_curr.y = nmap_curr.ptr (y + rows)[x];
+        n_curr.z = nmap_curr.ptr (y + 2 * rows)[x];
 
-        float3 ncurr_g = Rcurr * ncurr;
+        float3 n_curr_in_prev = R_prev_curr * n_curr;
 
-        float3 nprev_g;
-        nprev_g.x =  __ldg(&nmap_g_prev.ptr (ukr.y)[ukr.x]);
-        nprev_g.y = __ldg(&nmap_g_prev.ptr (ukr.y + rows)[ukr.x]);
-        nprev_g.z = __ldg(&nmap_g_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
+        float3 n_prev;
+        n_prev.x = __ldg(&nmap_prev.ptr (ukr.y)[ukr.x]);
+        n_prev.y = __ldg(&nmap_prev.ptr (ukr.y + rows)[ukr.x]);
+        n_prev.z = __ldg(&nmap_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
 
-        float dist = norm (vprev_g - vcurr_g);
-        float sine = norm (cross (ncurr_g, nprev_g));
+        float dist = norm(v_prev - v_curr_in_prev);
+        float sine = norm(cross(n_curr_in_prev, n_prev));
 
-        n = nprev_g;
-        d = vprev_g;
-        s = vcurr_g;
+        n = n_prev;
+        d = v_prev;
+        s = v_curr_in_prev;
 
-        return (sine < angleThres && dist <= distThres && !isnan (ncurr.x) && !isnan (nprev_g.x));
+        return (sine < angleThres && dist <= distThres && !isnan(n_curr.x) && !isnan(n_prev.x));
     }
 
     __device__ __forceinline__ jtjjtr
@@ -197,21 +193,17 @@ struct ICPReduction
         int y = i / cols;
         int x = i - (y * cols);
 
-        float3 n_cp, d_cp, s_cp;
+        float3 n, d, s;
 
-        bool found_coresp = search (x, y, n_cp, d_cp, s_cp);
+        bool found_coresp = search (x, y, n, d, s);
 
         float row[7] = {0, 0, 0, 0, 0, 0, 0};
 
         if(found_coresp)
         {
-            s_cp = Rprev_inv * (s_cp - tprev);         // prev camera coo space
-            d_cp = Rprev_inv * (d_cp - tprev);         // prev camera coo space
-            n_cp = Rprev_inv * (n_cp);                // prev camera coo space
-
-            *(float3*)&row[0] = n_cp;
-            *(float3*)&row[3] = cross (s_cp, n_cp);
-            row[6] = dot (n_cp, s_cp - d_cp);
+            *(float3*)&row[0] = n;
+            *(float3*)&row[3] = cross(s, n);
+            row[6] = dot(n, d - s);
         }
 
         jtjjtr values = {row[0] * row[0],
@@ -282,15 +274,13 @@ __global__ void icpKernel(const ICPReduction icp)
     icp();
 }
 
-void icpStep(const Mat33& Rcurr,
-             const float3& tcurr,
+void icpStep(const Mat33& R_prev_curr,
+             const float3& t_prev_curr,
              const DeviceArray2D<float>& vmap_curr,
              const DeviceArray2D<float>& nmap_curr,
-             const Mat33& Rprev_inv,
-             const float3& tprev,
              const Intr& intr,
-             const DeviceArray2D<float>& vmap_g_prev,
-             const DeviceArray2D<float>& nmap_g_prev,
+             const DeviceArray2D<float>& vmap_prev,
+             const DeviceArray2D<float>& nmap_prev,
              float distThres,
              float angleThres,
              DeviceArray<jtjjtr> & sum,
@@ -305,19 +295,16 @@ void icpStep(const Mat33& Rcurr,
 
     ICPReduction icp;
 
-    icp.Rcurr = Rcurr;
-    icp.tcurr = tcurr;
+    icp.R_prev_curr = R_prev_curr;
+    icp.t_prev_curr = t_prev_curr;
 
     icp.vmap_curr = vmap_curr;
     icp.nmap_curr = nmap_curr;
 
-    icp.Rprev_inv = Rprev_inv;
-    icp.tprev = tprev;
-
     icp.intr = intr;
 
-    icp.vmap_g_prev = vmap_g_prev;
-    icp.nmap_g_prev = nmap_g_prev;
+    icp.vmap_prev = vmap_prev;
+    icp.nmap_prev = nmap_prev;
 
     icp.distThres = distThres;
     icp.angleThres = angleThres;

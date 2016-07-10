@@ -9,10 +9,10 @@
 #define ICPODOMETRY_H_
 
 #include "Cuda/internal.h"
-#include "OdometryProvider.h"
 
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include <sophus/se3.hpp>
 #include <vector_types.h>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
@@ -20,6 +20,8 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/thread/condition_variable.hpp>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
 class ICPOdometry
 {
@@ -29,32 +31,27 @@ class ICPOdometry
                     int height,
                     float cx, float cy, float fx, float fy,
                     float distThresh = 0.10f,
-                    float angleThresh = sin(20.f * 3.14159254f / 180.f));
+                    float angleThresh = sinf(20.f * 3.14159254f / 180.f));
 
         virtual ~ICPOdometry();
 
-        void initICP(unsigned short * depth, const float depthCutoff);
+        void initICP(unsigned short * depth, const float depthCutoff = 20.0f);
 
-        void initICPModel(unsigned short * depth, const float depthCutoff, const Eigen::Matrix4f & modelPose);
+        void initICPModel(unsigned short * depth, const float depthCutoff = 20.0f);
 
-        void getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot, int threads, int blocks);
-
-        Eigen::MatrixXd getCovariance();
+        void getIncrementalTransformation(Sophus::SE3d & T_prev_curr, int threads, int blocks);
 
         float lastICPError;
         float lastICPCount;
 
-        Eigen::Matrix<double, 6, 6, Eigen::RowMajor> lastA;
-        Eigen::Matrix<double, 6, 1> lastb;
-
     private:
         std::vector<DeviceArray2D<unsigned short> > depth_tmp;
 
-        std::vector<DeviceArray2D<float> > vmaps_g_prev_;
-        std::vector<DeviceArray2D<float> > nmaps_g_prev_;
+        std::vector<DeviceArray2D<float> > vmaps_prev;
+        std::vector<DeviceArray2D<float> > nmaps_prev;
 
-        std::vector<DeviceArray2D<float> > vmaps_curr_;
-        std::vector<DeviceArray2D<float> > nmaps_curr_;
+        std::vector<DeviceArray2D<float> > vmaps_curr;
+        std::vector<DeviceArray2D<float> > nmaps_curr;
 
         Intr intr;
 
@@ -67,8 +64,6 @@ class ICPOdometry
 
         float distThres_;
         float angleThres_;
-
-        Eigen::Matrix<double, 6, 6> lastCov;
 
         const int width;
         const int height;

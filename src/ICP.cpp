@@ -106,7 +106,8 @@ int main(int argc, char * argv[])
     loadDepth(firstRaw);
     uint64_t timestamp = loadDepth(secondRaw);
 
-    Eigen::Matrix4f currPose = Eigen::Matrix4f::Identity();
+    Sophus::SE3d T_wc_prev;
+    Sophus::SE3d T_wc_curr;
 
     std::ofstream file;
     file.open("output.poses", std::fstream::out);
@@ -123,7 +124,7 @@ int main(int argc, char * argv[])
     float mean = std::numeric_limits<float>::max();
     int count = 0;
 
-    int threads = 128;
+    int threads = 224;
     int blocks = 96;
 
     int bestThreads = threads;
@@ -150,17 +151,20 @@ int main(int argc, char * argv[])
 
                     for(int i = 0; i < 5; i++)
                     {
-                        icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPose);
-                        icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
-
-                        Eigen::Vector3f trans = currPose.topRightCorner(3, 1);
-                        Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPose.topLeftCorner(3, 3);
+                        icpOdom.initICPModel((unsigned short *)firstRaw.data);
+                        icpOdom.initICP((unsigned short *)secondRaw.data);
 
                         boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
                         boost::posix_time::time_duration duration1(time.time_of_day());
                         unsigned long long int tick = duration1.total_microseconds();
 
-                        icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
+                        T_wc_prev = T_wc_curr;
+
+                        Sophus::SE3d T_prev_curr = T_wc_prev.inverse() * T_wc_curr;
+
+                        icpOdom.getIncrementalTransformation(T_prev_curr, threads, blocks);
+
+                        T_wc_curr = T_wc_prev * T_prev_curr;
 
                         time = boost::posix_time::microsec_clock::local_time();
                         boost::posix_time::time_duration duration2(time.time_of_day());
@@ -193,28 +197,29 @@ int main(int argc, char * argv[])
     mean = 0.0f;
     count = 0;
 
+    T_wc_prev = Sophus::SE3d();
+    T_wc_curr = Sophus::SE3d();
+
     while(!asFile.eof())
     {
-        icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPose);
-
-        icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
-
-        Eigen::Vector3f trans = currPose.topRightCorner(3, 1);
-        Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPose.topLeftCorner(3, 3);
+        icpOdom.initICPModel((unsigned short *)firstRaw.data);
+        icpOdom.initICP((unsigned short *)secondRaw.data);
 
         boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration duration1(time.time_of_day());
         unsigned long long int tick = duration1.total_microseconds();
 
-        icpOdom.getIncrementalTransformation(trans, rot, threads, blocks);
+        T_wc_prev = T_wc_curr;
+
+        Sophus::SE3d T_prev_curr = T_wc_prev.inverse() * T_wc_curr;
+
+        icpOdom.getIncrementalTransformation(T_prev_curr, threads, blocks);
+
+        T_wc_curr = T_wc_prev * T_prev_curr;
 
         time = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration duration2(time.time_of_day());
         unsigned long long int tock = duration2.total_microseconds();
-
-        currPose.topLeftCorner(3, 3) = rot;
-        currPose.topRightCorner(3, 1) = trans;
-
 
         mean = (float(count) * mean + (tock - tick) / 1000.0f) / float(count + 1);
         count++;
@@ -226,7 +231,7 @@ int main(int argc, char * argv[])
 
         std::swap(firstRaw, secondRaw);
 
-        outputFreiburg("output.poses", timestamp, currPose);
+        outputFreiburg("output.poses", timestamp, T_wc_curr.cast<float>().matrix());
 
         timestamp = loadDepth(secondRaw);
     }

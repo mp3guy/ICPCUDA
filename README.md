@@ -13,12 +13,12 @@ Run like;
 
 Where ~/Desktop/rgbd\_dataset\_freiburg1\_desk/ contains the depth.txt file, for more information see [here](http://vision.in.tum.de/data/datasets/rgbd-dataset).
 
-The main idea to getting the best performance is determining the best thread/block sizes to use. I have provided an exhaustive search function to do this, since it varies between GPUs. Simply pass the "-v" switch to the program to activate the search. The code will then first do a search for the best thread/block sizes and then run both methods for ICP and output something like this on an nVidia GeForce GTX TITAN X;
+The main idea to getting the best performance is determining the best thread/block sizes to use. I have provided an exhaustive search function to do this, since it varies between GPUs. Simply pass the "-v" switch to the program to activate the search. The code will then first do a search for the best thread/block sizes and then run ICP and output something like this on an nVidia GeForce GTX TITAN X;
 
 ```bash
 GeForce GTX TITAN X
 Searching for the best thread/block configuration for your GPU...
-Best: 512 threads, 48 blocks (1.3796ms), 100%    
+Best: 512 threads, 48 blocks (1.3796ms), 100%
 ICP: 1.3746ms
 ICP speed: 727Hz
 ```

@@ -49,8 +49,8 @@ class ICPOdometry
 
         Intr intr;
 
-        DeviceArray<jtjjtr> sumData;
-        DeviceArray<jtjjtr> outData;
+        DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> sumData;
+        DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> outData;
 
         static const int NUM_PYRS = 3;
 

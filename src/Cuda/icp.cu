@@ -23,21 +23,26 @@ __device__ __forceinline__ T __ldg(const T* ptr)
 }
 #endif
 
-__inline__  __device__ void warpReduceSum(jtjjtr & val)
+template<int D>
+__inline__  __device__ void warpReduceSum(Eigen::Matrix<float,D,1,Eigen::DontAlign> & val)
 {
     for(int offset = warpSize / 2; offset > 0; offset /= 2)
     {
         #pragma unroll
-        for(int i = 0; i < 29; i++)
+        for(int i = 0; i < D; i++)
         {
             val[i] += __shfl_down(val[i], offset);
         }
     }
 }
 
-__inline__  __device__ void blockReduceSum(jtjjtr & val)
+template<int D>
+__inline__  __device__ void blockReduceSum(Eigen::Matrix<float,D,1,Eigen::DontAlign> & val)
 {
-    static __shared__ jtjjtr shared[32];
+    //Allocate shared memory in two steps otherwise NVCC complains about Eigen's non-empty constructor
+    static __shared__ unsigned char sharedMem[32 * sizeof(Eigen::Matrix<float,D,1,Eigen::DontAlign>)];
+
+    Eigen::Matrix<float,D,1,Eigen::DontAlign> (&shared)[32] = reinterpret_cast<Eigen::Matrix<float,D,1,Eigen::DontAlign>(&)[32]>(sharedMem);
 
     int lane = threadIdx.x % warpSize;
 
@@ -52,13 +57,8 @@ __inline__  __device__ void blockReduceSum(jtjjtr & val)
     }
     __syncthreads();
 
-    const jtjjtr zero = {0, 0, 0, 0, 0, 0, 0, 0,
-                         0, 0, 0, 0, 0, 0, 0, 0,
-                         0, 0, 0, 0, 0, 0, 0, 0,
-                         0, 0, 0, 0, 0};
-
     //ensure we only grab a value from shared memory if that warp existed
-    val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : zero;
+    val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : Eigen::Matrix<float,D,1,Eigen::DontAlign>::Zero();
 
     if(wid == 0)
     {
@@ -66,12 +66,10 @@ __inline__  __device__ void blockReduceSum(jtjjtr & val)
     }
 }
 
-__global__ void reduceSum(jtjjtr * in, jtjjtr * out, int N)
+template<int D>
+__global__ void reduceSum(Eigen::Matrix<float,D,1,Eigen::DontAlign> * in, Eigen::Matrix<float,D,1,Eigen::DontAlign> * out, int N)
 {
-    jtjjtr sum = {0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0, 0, 0, 0,
-                  0, 0, 0, 0, 0};
+    Eigen::Matrix<float,D,1,Eigen::DontAlign> sum = Eigen::Matrix<float,D,1,Eigen::DontAlign>::Zero();
 
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
     {
@@ -106,7 +104,7 @@ struct ICPReduction
     int rows;
     int N;
 
-    jtjjtr * out;
+    Eigen::Matrix<float,29,1,Eigen::DontAlign> * out;
 
     __device__ __forceinline__ bool
     search (const int & x,
@@ -155,7 +153,7 @@ struct ICPReduction
     template<int outer, int inner, int end>
     struct SquareUpperTriangularProduct
     {
-        __device__ __forceinline__ static void apply(jtjjtr & values, const float (&rows)[end + 1])
+        __device__ __forceinline__ static void apply(Eigen::Matrix<float,29,1,Eigen::DontAlign> & values, const float (&rows)[end + 1])
         {
             values[((end + 1) * outer) + inner - (outer * (outer + 1) / 2)] = rows[outer] * rows[inner];
 
@@ -167,7 +165,7 @@ struct ICPReduction
     template<int outer, int end>
     struct SquareUpperTriangularProduct<outer, end, end>
     {
-        __device__ __forceinline__ static void apply(jtjjtr & values, const float (&rows)[end + 1])
+        __device__ __forceinline__ static void apply(Eigen::Matrix<float,29,1,Eigen::DontAlign> & values, const float (&rows)[end + 1])
         {
             values[((end + 1) * outer) + end - (outer * (outer + 1) / 2)] = rows[outer] * rows[end];
 
@@ -179,7 +177,7 @@ struct ICPReduction
     template<int end>
     struct SquareUpperTriangularProduct<end, end, end>
     {
-        __device__ __forceinline__ static void apply(jtjjtr & values, const float (&rows)[end + 1])
+        __device__ __forceinline__ static void apply(Eigen::Matrix<float,29,1,Eigen::DontAlign> & values, const float (&rows)[end + 1])
         {
             values[((end + 1) * end) + end - (end * (end + 1) / 2)] = rows[end] * rows[end];
         }
@@ -188,10 +186,7 @@ struct ICPReduction
     __device__ __forceinline__ void
     operator () () const
     {
-        jtjjtr sum = {0, 0, 0, 0, 0, 0, 0, 0,
-                      0, 0, 0, 0, 0, 0, 0, 0,
-                      0, 0, 0, 0, 0, 0, 0, 0,
-                      0, 0, 0, 0, 0};
+        Eigen::Matrix<float,29,1,Eigen::DontAlign> sum = Eigen::Matrix<float,29,1,Eigen::DontAlign>::Zero();
 
         SquareUpperTriangularProduct<0, 0, 6> sutp;
 
@@ -213,9 +208,11 @@ struct ICPReduction
                 row[6] = n.dot(d - s);
             }
 
-            jtjjtr values;
+            Eigen::Matrix<float,29,1,Eigen::DontAlign> values;
 
             sutp.apply(values, row);
+
+            values[28] = found;
 
             sum += values;
         }
@@ -243,11 +240,11 @@ void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
              const DeviceArray2D<float>& nmap_prev,
              float distThres,
              float angleThres,
-             DeviceArray<jtjjtr> & sum,
-             DeviceArray<jtjjtr> & out,
+             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & sum,
+             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & out,
              float * matrixA_host,
              float * vectorB_host,
-             float * residual_host,
+             float * residual_inliers,
              int threads, int blocks)
 {
     int cols = vmap_curr.cols ();
@@ -277,13 +274,13 @@ void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
 
     icpKernel<<<blocks, threads>>>(icp);
 
-    reduceSum<<<1, MAX_THREADS>>>(sum, out, blocks);
+    reduceSum<29><<<1, MAX_THREADS>>>(sum, out, blocks);
 
     cudaSafeCall(cudaGetLastError());
     cudaSafeCall(cudaDeviceSynchronize());
 
-    float host_data[32];
-    out.download((jtjjtr *)&host_data[0]);
+    float host_data[29];
+    out.download((Eigen::Matrix<float,29,1,Eigen::DontAlign> *)&host_data[0]);
 
     int shift = 0;
     for (int i = 0; i < 6; ++i)  //rows
@@ -298,6 +295,6 @@ void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
         }
     }
 
-    residual_host[0] = host_data[27];
-    residual_host[1] = host_data[28];
+    residual_inliers[0] = host_data[27];
+    residual_inliers[1] = host_data[28];
 }

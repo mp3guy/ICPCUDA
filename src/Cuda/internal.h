@@ -67,28 +67,6 @@ struct Intr
     }
 };
 
-struct jtjjtr
-{
-    float data[29];
-
-    __device__ inline float& operator[](const size_t idx)
-    {
-        return data[idx];
-    }
-
-    __device__ inline jtjjtr& operator+=(const jtjjtr& a)
-    {
-#ifdef __CUDACC__
-        #pragma unroll
-#endif
-        for(int i = 0; i < 29; i++)
-        {
-            data[i] += a.data[i];
-        }
-        return *this;
-    }
-};
-
 void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
              const Eigen::Matrix<float,3,1,Eigen::DontAlign> & t_prev_curr,
              const DeviceArray2D<float>& vmap_curr,
@@ -98,11 +76,11 @@ void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
              const DeviceArray2D<float>& nmap_prev,
              float distThres,
              float angleThres,
-             DeviceArray<jtjjtr> & sum,
-             DeviceArray<jtjjtr> & out,
+             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & sum,
+             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & out,
              float * matrixA_host,
              float * vectorB_host,
-             float * residual_host,
+             float * residual_inliers,
              int threads,
              int blocks);
 

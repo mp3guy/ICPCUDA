@@ -104,7 +104,7 @@ void ICPOdometry::getIncrementalTransformation(Sophus::SE3d & T_prev_curr, int t
     {
         for(int j = 0; j < iterations[i]; j++)
         {
-            float residual[2];
+            float residual_inliers[2];
             Eigen::Matrix<float, 6, 6, Eigen::RowMajor> A_icp;
             Eigen::Matrix<float, 6, 1> b_icp;
 
@@ -121,12 +121,12 @@ void ICPOdometry::getIncrementalTransformation(Sophus::SE3d & T_prev_curr, int t
                     outData,
                     A_icp.data(),
                     b_icp.data(),
-                    &residual[0],
+                    &residual_inliers[0],
                     threads,
                     blocks);
 
-            lastICPError = sqrt(residual[0]) / residual[1];
-            lastICPCount = residual[1];
+            lastICPError = sqrt(residual_inliers[0]) / residual_inliers[1];
+            lastICPCount = residual_inliers[1];
 
             const Eigen::Matrix<double, 6, 1> update = A_icp.cast<double>().ldlt().solve(b_icp.cast<double>());
 

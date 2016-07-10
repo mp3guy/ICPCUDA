@@ -1,5 +1,4 @@
 #include "ICPOdometry.h"
-#include "ICPSlowdometry.h"
 
 #include <iomanip>
 #include <fstream>
@@ -101,21 +100,16 @@ int main(int argc, char * argv[])
     cv::Mat1w secondRaw(480, 640);
 
     ICPOdometry icpOdom(640, 480, 320, 240, 528, 528);
-    ICPSlowdometry icpSlowdom(640, 480, 320, 240, 528, 528);
 
     assert(!asFile.eof() && asFile.is_open());
 
     loadDepth(firstRaw);
     uint64_t timestamp = loadDepth(secondRaw);
 
-    Eigen::Matrix4f currPoseFast = Eigen::Matrix4f::Identity();
-    Eigen::Matrix4f currPoseSlow = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f currPose = Eigen::Matrix4f::Identity();
 
     std::ofstream file;
-    file.open("fast.poses", std::fstream::out);
-    file.close();
-
-    file.open("slow.poses", std::fstream::out);
+    file.open("output.poses", std::fstream::out);
     file.close();
 
     cudaDeviceProp prop;
@@ -126,8 +120,7 @@ int main(int argc, char * argv[])
 
     std::cout << dev << std::endl;
 
-    float meanFast = std::numeric_limits<float>::max();
-    float meanSlow = 0.0f;
+    float mean = std::numeric_limits<float>::max();
     int count = 0;
 
     int threads = 128;
@@ -135,7 +128,7 @@ int main(int argc, char * argv[])
 
     int bestThreads = threads;
     int bestBlocks = blocks;
-    float bestFast = meanFast;
+    float best = mean;
 
     if(argc == 3)
     {
@@ -144,7 +137,7 @@ int main(int argc, char * argv[])
         if(searchArg.compare("-v") == 0)
         {
             std::cout << "Searching for the best thread/block configuration for your GPU..." << std::endl;
-            std::cout << "Best: " << bestThreads << " threads, " << bestBlocks << " blocks (" << bestFast << "ms)"; std::cout.flush();
+            std::cout << "Best: " << bestThreads << " threads, " << bestBlocks << " blocks (" << best << "ms)"; std::cout.flush();
 
             float counter = 0;
 
@@ -152,16 +145,16 @@ int main(int argc, char * argv[])
             {
                 for(blocks = 16; blocks <= 512; blocks += 16)
                 {
-                    meanFast = 0.0f;
+                    mean = 0.0f;
                     count = 0;
 
                     for(int i = 0; i < 5; i++)
                     {
-                        icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPoseFast);
+                        icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPose);
                         icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
 
-                        Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
-                        Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
+                        Eigen::Vector3f trans = currPose.topRightCorner(3, 1);
+                        Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPose.topLeftCorner(3, 3);
 
                         boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
                         boost::posix_time::time_duration duration1(time.time_of_day());
@@ -173,20 +166,20 @@ int main(int argc, char * argv[])
                         boost::posix_time::time_duration duration2(time.time_of_day());
                         unsigned long long int tock = duration2.total_microseconds();
 
-                        meanFast = (float(count) * meanFast + (tock - tick) / 1000.0f) / float(count + 1);
+                        mean = (float(count) * mean + (tock - tick) / 1000.0f) / float(count + 1);
                         count++;
                     }
 
                     counter++;
 
-                    if(meanFast < bestFast)
+                    if(mean < best)
                     {
-                        bestFast = meanFast;
+                        best = mean;
                         bestThreads = threads;
                         bestBlocks = blocks;
                     }
 
-                    std::cout << "\rBest: " << bestThreads << " threads, " << bestBlocks << " blocks (" << bestFast << "ms), " << int((counter / 1024.f) * 100.f) << "%    "; std::cout.flush();
+                    std::cout << "\rBest: " << bestThreads << " threads, " << bestBlocks << " blocks (" << best << "ms), " << int((counter / 1024.f) * 100.f) << "%    "; std::cout.flush();
                 }
             }
 
@@ -197,18 +190,17 @@ int main(int argc, char * argv[])
     threads = bestThreads;
     blocks = bestBlocks;
 
-    meanFast = 0.0f;
-    meanSlow = 0.0f;
+    mean = 0.0f;
     count = 0;
 
     while(!asFile.eof())
     {
-        icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPoseFast);
+        icpOdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPose);
 
         icpOdom.initICP((unsigned short *)secondRaw.data, 20.0f);
 
-        Eigen::Vector3f trans = currPoseFast.topRightCorner(3, 1);
-        Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPoseFast.topLeftCorner(3, 3);
+        Eigen::Vector3f trans = currPose.topRightCorner(3, 1);
+        Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = currPose.topLeftCorner(3, 3);
 
         boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration duration1(time.time_of_day());
@@ -220,51 +212,28 @@ int main(int argc, char * argv[])
         boost::posix_time::time_duration duration2(time.time_of_day());
         unsigned long long int tock = duration2.total_microseconds();
 
-        currPoseFast.topLeftCorner(3, 3) = rot;
-        currPoseFast.topRightCorner(3, 1) = trans;
+        currPose.topLeftCorner(3, 3) = rot;
+        currPose.topRightCorner(3, 1) = trans;
 
-        icpSlowdom.initICPModel((unsigned short *)firstRaw.data, 20.0f, currPoseSlow);
 
-        icpSlowdom.initICP((unsigned short *)secondRaw.data, 20.0f);
-
-        trans = currPoseSlow.topRightCorner(3, 1);
-        rot = currPoseSlow.topLeftCorner(3, 3);
-
-        time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration3(time.time_of_day());
-        unsigned long long int ticks = duration3.total_microseconds();
-
-        icpSlowdom.getIncrementalTransformation(trans, rot);
-
-        time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration4(time.time_of_day());
-        unsigned long long int tocks = duration4.total_microseconds();
-
-        currPoseSlow.topLeftCorner(3, 3) = rot;
-        currPoseSlow.topRightCorner(3, 1) = trans;
-
-        meanFast = (float(count) * meanFast + (tock - tick) / 1000.0f) / float(count + 1);
-        meanSlow = (float(count) * meanSlow + (tocks - ticks) / 1000.0f) / float(count + 1);
+        mean = (float(count) * mean + (tock - tick) / 1000.0f) / float(count + 1);
         count++;
 
         std::cout << std::setprecision(4) << std::fixed
-                  << "\rFast ICP: "
-                  << meanFast
-                  << "ms, Slow ICP: "
-                  << meanSlow << "ms";
+                  << "\r ICP: "
+                  << mean;
                   std::cout.flush();
 
         std::swap(firstRaw, secondRaw);
 
-        outputFreiburg("fast.poses", timestamp, currPoseFast);
-        outputFreiburg("slow.poses", timestamp, currPoseSlow);
+        outputFreiburg("output.poses", timestamp, currPose);
 
         timestamp = loadDepth(secondRaw);
     }
 
     std::cout << std::endl;
 
-    std::cout << meanSlow / meanFast << " times faster. Fast ICP speed: " << int(1000.f / meanFast) << "Hz" << std::endl;
+    std::cout << "ICP speed: " << int(1000.f / mean) << "Hz" << std::endl;
 
     return 0;
 }

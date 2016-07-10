@@ -8,7 +8,7 @@ find_package(CUDA REQUIRED)
 find_package(Sophus REQUIRED)
 
 #remove this as soon as eigen is shipped with FindEigen.cmake
-  get_filename_component(EIGEN_ROOT "/usr/include/eigen3" PATH)
+  get_filename_component(EIGEN_ROOT "/usr/include/local/eigen3" PATH)
   if(PKG_CONFIG_FOUND)
     pkg_check_modules(PC_EIGEN eigen3)
   endif(PKG_CONFIG_FOUND)

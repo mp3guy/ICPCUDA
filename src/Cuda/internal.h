@@ -41,12 +41,15 @@
 #include "containers/device_array.hpp"
 #include <vector_types.h>
 #include <cuda_runtime_api.h>
+#include <Eigen/Eigen>
 
 #if __CUDA_ARCH__ < 300
 #define MAX_THREADS 512
 #else
 #define MAX_THREADS 1024
 #endif
+
+static inline int divUp(int total, int grain) { return (total + grain - 1) / grain; }
 
 /** \brief Camera intrinsics structure
   */
@@ -61,13 +64,6 @@ struct Intr
         int div = 1 << level_index;
         return (Intr (fx / div, fy / div, cx / div, cy / div));
     }
-};
-
-/** \brief 3x3 Matrix for device code
-  */
-struct Mat33
-{
-    float3 data[3];
 };
 
 struct jtjjtr
@@ -123,8 +119,8 @@ struct jtjjtr
     }
 };
 
-void icpStep(const Mat33& R_prev_curr,
-             const float3& t_prev_curr,
+void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
+             const Eigen::Matrix<float,3,1,Eigen::DontAlign> & t_prev_curr,
              const DeviceArray2D<float>& vmap_curr,
              const DeviceArray2D<float>& nmap_curr,
              const Intr& intr,
@@ -137,19 +133,12 @@ void icpStep(const Mat33& R_prev_curr,
              float * matrixA_host,
              float * vectorB_host,
              float * residual_host,
-             int threads, int blocks);
+             int threads,
+             int blocks);
 
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);
 
 void createVMap(const Intr& intr, const DeviceArray2D<unsigned short> & depth, DeviceArray2D<float> & vmap, const float depthCutoff);
 void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap);
-
-void resizeVMap(const DeviceArray2D<float>& input, DeviceArray2D<float>& output);
-void resizeNMap(const DeviceArray2D<float>& input, DeviceArray2D<float>& output);
-
-template<class D, class Matx> D& device_cast (Matx& matx)
-{
-    return(*reinterpret_cast<D*>(matx.data ()));
-}
 
 #endif /* INTERNAL_HPP_ */

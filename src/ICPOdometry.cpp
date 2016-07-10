@@ -104,18 +104,12 @@ void ICPOdometry::getIncrementalTransformation(Sophus::SE3d & T_prev_curr, int t
     {
         for(int j = 0; j < iterations[i]; j++)
         {
-            const Eigen::Matrix<float, 3, 3, Eigen::RowMajor> R_prev_curr = T_prev_curr.rotationMatrix().cast<float>();
-            const Eigen::Vector3f t_prev_curr = T_prev_curr.translation().cast<float>();
-
-            const Mat33& device_R_prev_curr = device_cast<const Mat33>(R_prev_curr);
-            const float3& device_t_prev_curr = device_cast<const float3>(t_prev_curr);
-
             float residual[2];
             Eigen::Matrix<float, 6, 6, Eigen::RowMajor> A_icp;
             Eigen::Matrix<float, 6, 1> b_icp;
 
-            icpStep(device_R_prev_curr,
-                    device_t_prev_curr,
+            icpStep(T_prev_curr.rotationMatrix().cast<float>().eval(),
+                    T_prev_curr.translation().cast<float>().eval(),
                     vmaps_curr[i],
                     nmaps_curr[i],
                     intr(i),

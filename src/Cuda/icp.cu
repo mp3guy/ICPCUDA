@@ -1,5 +1,4 @@
 #include "internal.h"
-#include "vector_math.hpp"
 #include "containers/safe_call.hpp"
 
 #if __CUDA_ARCH__ < 300
@@ -123,8 +122,8 @@ __global__ void reduceSum(jtjjtr * in, jtjjtr * out, int N)
 
 struct ICPReduction
 {
-    Mat33 R_prev_curr;
-    float3 t_prev_curr;
+    Eigen::Matrix<float, 3, 3, Eigen::DontAlign> R_prev_curr;
+    Eigen::Matrix<float, 3, 1, Eigen::DontAlign> t_prev_curr;
 
     PtrStep<float> vmap_curr;
     PtrStep<float> nmap_curr;
@@ -144,47 +143,46 @@ struct ICPReduction
     jtjjtr * out;
 
     __device__ __forceinline__ bool
-    search (int & x, int & y, float3& n, float3& d, float3& s) const
+    search (const int & x,
+            const int & y,
+            Eigen::Matrix<float,3,1,Eigen::DontAlign>& n,
+            Eigen::Matrix<float,3,1,Eigen::DontAlign>& d,
+            Eigen::Matrix<float,3,1,Eigen::DontAlign>& s) const
     {
-        float3 v_curr;
-        v_curr.x = vmap_curr.ptr (y       )[x];
-        v_curr.y = vmap_curr.ptr (y + rows)[x];
-        v_curr.z = vmap_curr.ptr (y + 2 * rows)[x];
+        const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_curr(vmap_curr.ptr(y)[x],
+                                                               vmap_curr.ptr(y + rows)[x],
+                                                               vmap_curr.ptr(y + 2 * rows)[x]);
 
-        float3 v_curr_in_prev = R_prev_curr * v_curr + t_prev_curr;
+        const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_curr_in_prev = R_prev_curr * v_curr + t_prev_curr;
 
-        int2 ukr;
-        ukr.x = __float2int_rn (v_curr_in_prev.x * intr.fx / v_curr_in_prev.z + intr.cx);
-        ukr.y = __float2int_rn (v_curr_in_prev.y * intr.fy / v_curr_in_prev.z + intr.cy);
+        const Eigen::Matrix<int,2,1,Eigen::DontAlign> p_curr_in_prev(__float2int_rn(v_curr_in_prev(0) * intr.fx / v_curr_in_prev(2) + intr.cx),
+                                                                     __float2int_rn(v_curr_in_prev(1) * intr.fy / v_curr_in_prev(2) + intr.cy));
 
-        if(ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || v_curr_in_prev.z < 0)
+        if(p_curr_in_prev(0) < 0 || p_curr_in_prev(1) < 0 || p_curr_in_prev(0) >= cols || p_curr_in_prev(1) >= rows || v_curr_in_prev(2) < 0)
             return false;
 
-        float3 v_prev;
-        v_prev.x = __ldg(&vmap_prev.ptr (ukr.y       )[ukr.x]);
-        v_prev.y = __ldg(&vmap_prev.ptr (ukr.y + rows)[ukr.x]);
-        v_prev.z = __ldg(&vmap_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
+        const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_prev(__ldg(&vmap_prev.ptr(p_curr_in_prev(1))[p_curr_in_prev(0)]),
+                                                               __ldg(&vmap_prev.ptr(p_curr_in_prev(1) + rows)[p_curr_in_prev(0)]),
+                                                               __ldg(&vmap_prev.ptr(p_curr_in_prev(1) + 2 * rows)[p_curr_in_prev(0)]));
 
-        float3 n_curr;
-        n_curr.x = nmap_curr.ptr (y)[x];
-        n_curr.y = nmap_curr.ptr (y + rows)[x];
-        n_curr.z = nmap_curr.ptr (y + 2 * rows)[x];
+        const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_curr(nmap_curr.ptr(y)[x],
+                                                               nmap_curr.ptr(y + rows)[x],
+                                                               nmap_curr.ptr(y + 2 * rows)[x]);
 
-        float3 n_curr_in_prev = R_prev_curr * n_curr;
+        const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_curr_in_prev = R_prev_curr * n_curr;
 
-        float3 n_prev;
-        n_prev.x = __ldg(&nmap_prev.ptr (ukr.y)[ukr.x]);
-        n_prev.y = __ldg(&nmap_prev.ptr (ukr.y + rows)[ukr.x]);
-        n_prev.z = __ldg(&nmap_prev.ptr (ukr.y + 2 * rows)[ukr.x]);
+        const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_prev(__ldg(&nmap_prev.ptr(p_curr_in_prev(1))[p_curr_in_prev(0)]),
+                                                               __ldg(&nmap_prev.ptr(p_curr_in_prev(1) + rows)[p_curr_in_prev(0)]),
+                                                               __ldg(&nmap_prev.ptr(p_curr_in_prev(1) + 2 * rows)[p_curr_in_prev(0)]));
 
-        float dist = norm(v_prev - v_curr_in_prev);
-        float sine = norm(cross(n_curr_in_prev, n_prev));
+        const float dist = (v_prev - v_curr_in_prev).norm();
+        const float sine = n_curr_in_prev.cross(n_prev).norm();
 
         n = n_prev;
         d = v_prev;
         s = v_curr_in_prev;
 
-        return (sine < angleThres && dist <= distThres && !isnan(n_curr.x) && !isnan(n_prev.x));
+        return (sine < angleThres && dist <= distThres && !isnan(n_curr(0)) && !isnan(n_prev(0)));
     }
 
     __device__ __forceinline__ jtjjtr
@@ -193,17 +191,17 @@ struct ICPReduction
         int y = i / cols;
         int x = i - (y * cols);
 
-        float3 n, d, s;
+        Eigen::Matrix<float,3,1,Eigen::DontAlign> n, d, s;
 
-        bool found_coresp = search (x, y, n, d, s);
+        bool found_coresp = search(x, y, n, d, s);
 
         float row[7] = {0, 0, 0, 0, 0, 0, 0};
 
         if(found_coresp)
         {
-            *(float3*)&row[0] = n;
-            *(float3*)&row[3] = cross(s, n);
-            row[6] = dot(n, d - s);
+            *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[0] = n;
+            *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[3] = s.cross(n);
+            row[6] = n.dot(d - s);
         }
 
         jtjjtr values = {row[0] * row[0],
@@ -274,8 +272,8 @@ __global__ void icpKernel(const ICPReduction icp)
     icp();
 }
 
-void icpStep(const Mat33& R_prev_curr,
-             const float3& t_prev_curr,
+void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
+             const Eigen::Matrix<float,3,1,Eigen::DontAlign> & t_prev_curr,
              const DeviceArray2D<float>& vmap_curr,
              const DeviceArray2D<float>& nmap_curr,
              const Intr& intr,

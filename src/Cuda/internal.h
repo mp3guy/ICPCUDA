@@ -39,6 +39,7 @@
 #define INTERNAL_HPP_
 
 #include "containers/device_array.hpp"
+
 #include <vector_types.h>
 #include <cuda_runtime_api.h>
 #include <Eigen/Eigen>

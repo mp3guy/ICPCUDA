@@ -13,13 +13,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <sophus/se3.hpp>
-#include <vector_types.h>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
-#include <boost/thread/condition_variable.hpp>
+
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 

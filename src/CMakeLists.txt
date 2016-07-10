@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 2.6.0)
 project(ICP)
 
 find_package(OpenCV REQUIRED)
-find_package(Boost COMPONENTS thread filesystem system date_time REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(Sophus REQUIRED)
 
@@ -23,7 +22,6 @@ find_package(Sophus REQUIRED)
       -DEIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET)
       
 include_directories(${OpenCV_INCLUDE_DIRS})
-include_directories(${Boost_INCLUDE_DIR})
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${EIGEN_INCLUDE_DIRS})
 include_directories(${Sophus_INCLUDE_DIR})
@@ -39,12 +37,12 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 include(CudaComputeTargetFlags.cmake)                  
 APPEND_TARGET_ARCH_FLAGS()
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}  "-Xcompiler;-fPIC;")           
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}  "-Xcompiler;-fPIC;")
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--ftz=true;--prec-div=false;--prec-sqrt=false") 
 
 CUDA_COMPILE(cuda_objs ${cuda})
 
-set(CMAKE_CXX_FLAGS "-O3 -msse2 -msse3 -Wall")
+set(CMAKE_CXX_FLAGS "-O3 -msse2 -msse3 -Wall -std=c++11")
 
 add_executable(ICP 
                ${srcs}
@@ -54,7 +52,6 @@ add_executable(ICP
 )
 
 target_link_libraries(ICP
-                      ${Boost_LIBRARIES}
                       ${OpenCV_LIBS}
                       ${Eigen_LIBRARIES}
                       ${CUDA_LIBRARIES}

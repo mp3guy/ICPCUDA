@@ -2,6 +2,7 @@
 
 #include <iomanip>
 #include <fstream>
+#include <chrono>
 
 std::ifstream asFile;
 std::string directory;
@@ -80,6 +81,11 @@ void outputFreiburg(const std::string filename, const int64_t & timestamp, const
     file.close();
 }
 
+uint64_t getCurrTime()
+{
+    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+}
+
 int main(int argc, char * argv[])
 {
     assert((argc == 2 || argc == 3) && "Please supply the depth.txt dir as the first argument");
@@ -154,9 +160,7 @@ int main(int argc, char * argv[])
                         icpOdom.initICPModel((unsigned short *)firstRaw.data);
                         icpOdom.initICP((unsigned short *)secondRaw.data);
 
-                        boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
-                        boost::posix_time::time_duration duration1(time.time_of_day());
-                        unsigned long long int tick = duration1.total_microseconds();
+                        unsigned long long int tick = getCurrTime();
 
                         T_wc_prev = T_wc_curr;
 
@@ -166,9 +170,7 @@ int main(int argc, char * argv[])
 
                         T_wc_curr = T_wc_prev * T_prev_curr;
 
-                        time = boost::posix_time::microsec_clock::local_time();
-                        boost::posix_time::time_duration duration2(time.time_of_day());
-                        unsigned long long int tock = duration2.total_microseconds();
+                        unsigned long long int tock = getCurrTime();
 
                         mean = (float(count) * mean + (tock - tick) / 1000.0f) / float(count + 1);
                         count++;
@@ -205,9 +207,7 @@ int main(int argc, char * argv[])
         icpOdom.initICPModel((unsigned short *)firstRaw.data);
         icpOdom.initICP((unsigned short *)secondRaw.data);
 
-        boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration1(time.time_of_day());
-        unsigned long long int tick = duration1.total_microseconds();
+        unsigned long long int tick = getCurrTime();
 
         T_wc_prev = T_wc_curr;
 
@@ -217,9 +217,7 @@ int main(int argc, char * argv[])
 
         T_wc_curr = T_wc_prev * T_prev_curr;
 
-        time = boost::posix_time::microsec_clock::local_time();
-        boost::posix_time::time_duration duration2(time.time_of_day());
-        unsigned long long int tock = duration2.total_microseconds();
+        unsigned long long int tock = getCurrTime();
 
         mean = (float(count) * mean + (tock - tick) / 1000.0f) / float(count + 1);
         count++;

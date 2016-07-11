@@ -67,22 +67,22 @@ struct Intr
     }
 };
 
-void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
-             const Eigen::Matrix<float,3,1,Eigen::DontAlign> & t_prev_curr,
-             const DeviceArray2D<float>& vmap_curr,
-             const DeviceArray2D<float>& nmap_curr,
-             const Intr& intr,
-             const DeviceArray2D<float>& vmap_prev,
-             const DeviceArray2D<float>& nmap_prev,
-             float distThres,
-             float angleThres,
-             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & sum,
-             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & out,
-             float * matrixA_host,
-             float * vectorB_host,
-             float * residual_inliers,
-             int threads,
-             int blocks);
+void estimateStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
+                  const Eigen::Matrix<float,3,1,Eigen::DontAlign> & t_prev_curr,
+                  const DeviceArray2D<float>& vmap_curr,
+                  const DeviceArray2D<float>& nmap_curr,
+                  const Intr& intr,
+                  const DeviceArray2D<float>& vmap_prev,
+                  const DeviceArray2D<float>& nmap_prev,
+                  float dist_thresh,
+                  float angle_thresh,
+                  DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & sum,
+                  DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & out,
+                  float * matrixA_host,
+                  float * vectorB_host,
+                  float * residual_inliers,
+                  int threads,
+                  int blocks);
 
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);
 

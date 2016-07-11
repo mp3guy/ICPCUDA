@@ -1,5 +1,5 @@
 # ICPCUDA
-Super fast implementation of ICP in CUDA for compute capable devices 2.0 or higher. On an nVidia GeForce GTX TITAN X it runs at over __720Hz__ (using projective data assocation). To compile all architectures you'll need CUDA 7.0 I think, (or 6.5 with the special release for 9xx cards). You can compile for older cards by removing the unsupported architectures from the CMakeLists.txt file. 
+Super fast implementation of ICP in CUDA for compute capable devices 2.0 or higher. On an nVidia GeForce GTX TITAN X it runs at over __750Hz__ (using projective data assocation). To compile all architectures you'll need CUDA 7.0 I think, (or 6.5 with the special release for 9xx cards). You can compile for older cards by removing the unsupported architectures from the CMakeLists.txt file. 
 
 Requires CUDA, [Pangolin](https://github.com/stevenlovegrove/Pangolin), [Eigen](https://github.com/stevenlovegrove/eigen). I've built it to take in raw TUM RGB-D datasets to do frame-to-frame dense ICP as an example application.
 
@@ -18,9 +18,9 @@ The main idea to getting the best performance is determining the best thread/blo
 ```bash
 GeForce GTX TITAN X
 Searching for the best thread/block configuration for your GPU...
-Best: 512 threads, 48 blocks (1.3796ms), 100%
-ICP: 1.3746ms
-ICP speed: 727Hz
+Best: 256 threads, 96 blocks (1.3306ms), 100%
+ICP: 1.3236ms
+ICP speed: 755Hz
 ```
 
 The code will output one file; output.poses. You can evaluate it on the TUM benchmark by using their tools. I get something like this;

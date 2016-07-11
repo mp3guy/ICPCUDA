@@ -8,14 +8,14 @@
 #include "ICPOdometry.h"
 
 ICPOdometry::ICPOdometry(int width,
-                         int height,
-                         float cx, float cy, float fx, float fy,
-                         float distThresh,
-                         float angleThresh)
-: lastICPError(0),
-  lastICPCount(width * height),
-  distThres_(distThresh),
-  angleThres_(angleThresh),
+                          int height,
+                          float cx, float cy, float fx, float fy,
+                          float distThresh,
+                          float angleThresh)
+: lastError(0),
+  lastInliers(width * height),
+  dist_thresh(distThresh),
+  angle_thresh(angleThresh),
   width(width),
   height(height),
   cx(cx), cy(cy), fx(fx), fy(fy)
@@ -43,13 +43,13 @@ ICPOdometry::ICPOdometry(int width,
         int pyr_rows = height >> i;
         int pyr_cols = width >> i;
 
-        depth_tmp[i].create (pyr_rows, pyr_cols);
+        depth_tmp[i].create(pyr_rows, pyr_cols);
 
-        vmaps_prev[i].create (pyr_rows*3, pyr_cols);
-        nmaps_prev[i].create (pyr_rows*3, pyr_cols);
+        vmaps_prev[i].create(pyr_rows*3, pyr_cols);
+        nmaps_prev[i].create(pyr_rows*3, pyr_cols);
 
-        vmaps_curr[i].create (pyr_rows*3, pyr_cols);
-        nmaps_curr[i].create (pyr_rows*3, pyr_cols);
+        vmaps_curr[i].create(pyr_rows*3, pyr_cols);
+        nmaps_curr[i].create(pyr_rows*3, pyr_cols);
     }
 }
 
@@ -108,25 +108,25 @@ void ICPOdometry::getIncrementalTransformation(Sophus::SE3d & T_prev_curr, int t
             Eigen::Matrix<float, 6, 6, Eigen::RowMajor> A_icp;
             Eigen::Matrix<float, 6, 1> b_icp;
 
-            icpStep(T_prev_curr.rotationMatrix().cast<float>().eval(),
-                    T_prev_curr.translation().cast<float>().eval(),
-                    vmaps_curr[i],
-                    nmaps_curr[i],
-                    intr(i),
-                    vmaps_prev[i],
-                    nmaps_prev[i],
-                    distThres_,
-                    angleThres_,
-                    sumData,
-                    outData,
-                    A_icp.data(),
-                    b_icp.data(),
-                    &residual_inliers[0],
-                    threads,
-                    blocks);
+            estimateStep(T_prev_curr.rotationMatrix().cast<float>().eval(),
+                         T_prev_curr.translation().cast<float>().eval(),
+                         vmaps_curr[i],
+                         nmaps_curr[i],
+                         intr(i),
+                         vmaps_prev[i],
+                         nmaps_prev[i],
+                         dist_thresh,
+                         angle_thresh,
+                         sumData,
+                         outData,
+                         A_icp.data(),
+                         b_icp.data(),
+                         &residual_inliers[0],
+                         threads,
+                         blocks);
 
-            lastICPError = sqrt(residual_inliers[0]) / residual_inliers[1];
-            lastICPCount = residual_inliers[1];
+            lastError = sqrt(residual_inliers[0]) / residual_inliers[1];
+            lastInliers = residual_inliers[1];
 
             const Eigen::Matrix<double, 6, 1> update = A_icp.cast<double>().ldlt().solve(b_icp.cast<double>());
 

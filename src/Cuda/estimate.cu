@@ -84,70 +84,27 @@ __global__ void reduceSum(Eigen::Matrix<float,D,1,Eigen::DontAlign> * in, Eigen:
     }
 }
 
-struct ICPReduction
+struct Reduction
 {
     Eigen::Matrix<float, 3, 3, Eigen::DontAlign> R_prev_curr;
     Eigen::Matrix<float, 3, 1, Eigen::DontAlign> t_prev_curr;
 
+    Intr intr;
+
     PtrStep<float> vmap_curr;
     PtrStep<float> nmap_curr;
-
-    Intr intr;
 
     PtrStep<float> vmap_prev;
     PtrStep<float> nmap_prev;
 
-    float distThres;
-    float angleThres;
+    float dist_thresh;
+    float angle_thresh;
 
     int cols;
     int rows;
     int N;
 
     Eigen::Matrix<float,29,1,Eigen::DontAlign> * out;
-
-    __device__ __forceinline__ bool
-    search (const int & x,
-            const int & y,
-            Eigen::Matrix<float,3,1,Eigen::DontAlign>& n,
-            Eigen::Matrix<float,3,1,Eigen::DontAlign>& d,
-            Eigen::Matrix<float,3,1,Eigen::DontAlign>& s) const
-    {
-        const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_curr(vmap_curr.ptr(y)[x],
-                                                               vmap_curr.ptr(y + rows)[x],
-                                                               vmap_curr.ptr(y + 2 * rows)[x]);
-
-        const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_curr_in_prev = R_prev_curr * v_curr + t_prev_curr;
-
-        const Eigen::Matrix<int,2,1,Eigen::DontAlign> p_curr_in_prev(__float2int_rn(v_curr_in_prev(0) * intr.fx / v_curr_in_prev(2) + intr.cx),
-                                                                     __float2int_rn(v_curr_in_prev(1) * intr.fy / v_curr_in_prev(2) + intr.cy));
-
-        if(p_curr_in_prev(0) < 0 || p_curr_in_prev(1) < 0 || p_curr_in_prev(0) >= cols || p_curr_in_prev(1) >= rows || v_curr_in_prev(2) < 0)
-            return false;
-
-        const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_prev(__ldg(&vmap_prev.ptr(p_curr_in_prev(1))[p_curr_in_prev(0)]),
-                                                               __ldg(&vmap_prev.ptr(p_curr_in_prev(1) + rows)[p_curr_in_prev(0)]),
-                                                               __ldg(&vmap_prev.ptr(p_curr_in_prev(1) + 2 * rows)[p_curr_in_prev(0)]));
-
-        const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_curr(nmap_curr.ptr(y)[x],
-                                                               nmap_curr.ptr(y + rows)[x],
-                                                               nmap_curr.ptr(y + 2 * rows)[x]);
-
-        const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_curr_in_prev = R_prev_curr * n_curr;
-
-        const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_prev(__ldg(&nmap_prev.ptr(p_curr_in_prev(1))[p_curr_in_prev(0)]),
-                                                               __ldg(&nmap_prev.ptr(p_curr_in_prev(1) + rows)[p_curr_in_prev(0)]),
-                                                               __ldg(&nmap_prev.ptr(p_curr_in_prev(1) + 2 * rows)[p_curr_in_prev(0)]));
-
-        const float dist = (v_prev - v_curr_in_prev).norm();
-        const float sine = n_curr_in_prev.cross(n_prev).norm();
-
-        n = n_prev;
-        d = v_prev;
-        s = v_curr_in_prev;
-
-        return (sine < angleThres && dist <= distThres && !isnan(n_curr(0)) && !isnan(n_prev(0)));
-    }
 
     //And now for some template metaprogramming magic
     template<int outer, int inner, int end>
@@ -190,31 +147,56 @@ struct ICPReduction
 
         SquareUpperTriangularProduct<0, 0, 6> sutp;
 
+        Eigen::Matrix<float,29,1,Eigen::DontAlign> values;
+
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
         {
-            int y = i / cols;
-            int x = i - (y * cols);
+            const int y = i / cols;
+            const int x = i - (y * cols);
 
-            Eigen::Matrix<float,3,1,Eigen::DontAlign> n, d, s;
+            const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_curr(vmap_curr.ptr(y)[x],
+                                                                   vmap_curr.ptr(y + rows)[x],
+                                                                   vmap_curr.ptr(y + 2 * rows)[x]);
 
-            bool found = search(x, y, n, d, s);
+            const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_curr_in_prev = R_prev_curr * v_curr + t_prev_curr;
+
+            const Eigen::Matrix<int,2,1,Eigen::DontAlign> p_curr_in_prev(__float2int_rn(v_curr_in_prev(0) * intr.fx / v_curr_in_prev(2) + intr.cx),
+                                                                         __float2int_rn(v_curr_in_prev(1) * intr.fy / v_curr_in_prev(2) + intr.cy));
 
             float row[7] = {0, 0, 0, 0, 0, 0, 0};
 
-            if(found)
+            values[28] = 0;
+
+            if(p_curr_in_prev(0) >= 0 && p_curr_in_prev(1) >= 0 && p_curr_in_prev(0) < cols && p_curr_in_prev(1) < rows && v_curr(2) > 0 && v_curr_in_prev(2) > 0)
             {
-                *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[0] = n;
-                *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[3] = s.cross(n);
-                row[6] = n.dot(d - s);
+                const Eigen::Matrix<float,3,1,Eigen::DontAlign> v_prev(__ldg(&vmap_prev.ptr(p_curr_in_prev(1))[p_curr_in_prev(0)]),
+                                                                       __ldg(&vmap_prev.ptr(p_curr_in_prev(1) + rows)[p_curr_in_prev(0)]),
+                                                                       __ldg(&vmap_prev.ptr(p_curr_in_prev(1) + 2 * rows)[p_curr_in_prev(0)]));
+
+                const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_curr(nmap_curr.ptr(y)[x],
+                                                                       nmap_curr.ptr(y + rows)[x],
+                                                                       nmap_curr.ptr(y + 2 * rows)[x]);
+
+                const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_curr_in_prev = R_prev_curr * n_curr;
+
+                const Eigen::Matrix<float,3,1,Eigen::DontAlign> n_prev(__ldg(&nmap_prev.ptr(p_curr_in_prev(1))[p_curr_in_prev(0)]),
+                                                                       __ldg(&nmap_prev.ptr(p_curr_in_prev(1) + rows)[p_curr_in_prev(0)]),
+                                                                       __ldg(&nmap_prev.ptr(p_curr_in_prev(1) + 2 * rows)[p_curr_in_prev(0)]));
+
+                if(n_curr_in_prev.cross(n_prev).norm() < angle_thresh && (v_prev - v_curr_in_prev).norm() < dist_thresh && !isnan(n_curr(0)) && !isnan(n_prev(0)))
+                {
+                    *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[0] = n_prev;
+                    *(Eigen::Matrix<float,3,1,Eigen::DontAlign>*)&row[3] = v_curr_in_prev.cross(n_prev);
+                    row[6] = n_prev.dot(v_prev - v_curr_in_prev);
+
+                    values[28] = 1;
+
+                    sutp.apply(values, row);
+
+                    sum += values;
+                }
             }
 
-            Eigen::Matrix<float,29,1,Eigen::DontAlign> values;
-
-            sutp.apply(values, row);
-
-            values[28] = found;
-
-            sum += values;
         }
 
         blockReduceSum(sum);
@@ -226,53 +208,53 @@ struct ICPReduction
     }
 };
 
-__global__ void icpKernel(const ICPReduction icp)
+__global__ void estimateKernel(const Reduction reduction)
 {
-    icp();
+    reduction();
 }
 
-void icpStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
-             const Eigen::Matrix<float,3,1,Eigen::DontAlign> & t_prev_curr,
-             const DeviceArray2D<float>& vmap_curr,
-             const DeviceArray2D<float>& nmap_curr,
-             const Intr& intr,
-             const DeviceArray2D<float>& vmap_prev,
-             const DeviceArray2D<float>& nmap_prev,
-             float distThres,
-             float angleThres,
-             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & sum,
-             DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & out,
-             float * matrixA_host,
-             float * vectorB_host,
-             float * residual_inliers,
-             int threads, int blocks)
+void estimateStep(const Eigen::Matrix<float,3,3,Eigen::DontAlign> & R_prev_curr,
+                  const Eigen::Matrix<float,3,1,Eigen::DontAlign> & t_prev_curr,
+                  const DeviceArray2D<float>& vmap_curr,
+                  const DeviceArray2D<float>& nmap_curr,
+                  const Intr& intr,
+                  const DeviceArray2D<float>& vmap_prev,
+                  const DeviceArray2D<float>& nmap_prev,
+                  float dist_thresh,
+                  float angle_thresh,
+                  DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & sum,
+                  DeviceArray<Eigen::Matrix<float,29,1,Eigen::DontAlign>> & out,
+                  float * matrixA_host,
+                  float * vectorB_host,
+                  float * residual_inliers,
+                  int threads, int blocks)
 {
     int cols = vmap_curr.cols ();
     int rows = vmap_curr.rows () / 3;
 
-    ICPReduction icp;
+    Reduction reduction;
 
-    icp.R_prev_curr = R_prev_curr;
-    icp.t_prev_curr = t_prev_curr;
+    reduction.R_prev_curr = R_prev_curr;
+    reduction.t_prev_curr = t_prev_curr;
 
-    icp.vmap_curr = vmap_curr;
-    icp.nmap_curr = nmap_curr;
+    reduction.vmap_curr = vmap_curr;
+    reduction.nmap_curr = nmap_curr;
 
-    icp.intr = intr;
+    reduction.intr = intr;
 
-    icp.vmap_prev = vmap_prev;
-    icp.nmap_prev = nmap_prev;
+    reduction.vmap_prev = vmap_prev;
+    reduction.nmap_prev = nmap_prev;
 
-    icp.distThres = distThres;
-    icp.angleThres = angleThres;
+    reduction.dist_thresh = dist_thresh;
+    reduction.angle_thresh = angle_thresh;
 
-    icp.cols = cols;
-    icp.rows = rows;
+    reduction.cols = cols;
+    reduction.rows = rows;
 
-    icp.N = cols * rows;
-    icp.out = sum;
+    reduction.N = cols * rows;
+    reduction.out = sum;
 
-    icpKernel<<<blocks, threads>>>(icp);
+    estimateKernel<<<blocks, threads>>>(reduction);
 
     reduceSum<29><<<1, MAX_THREADS>>>(sum, out, blocks);
 

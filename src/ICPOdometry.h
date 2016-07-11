@@ -22,10 +22,10 @@ class ICPOdometry
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         ICPOdometry(int width,
-                    int height,
-                    float cx, float cy, float fx, float fy,
-                    float distThresh = 0.10f,
-                    float angleThresh = sinf(20.f * 3.14159254f / 180.f));
+                     int height,
+                     float cx, float cy, float fx, float fy,
+                     float distThresh = 0.10f,
+                     float angleThresh = sinf(20.f * 3.14159254f / 180.f));
 
         virtual ~ICPOdometry();
 
@@ -35,17 +35,17 @@ class ICPOdometry
 
         void getIncrementalTransformation(Sophus::SE3d & T_prev_curr, int threads, int blocks);
 
-        float lastICPError;
-        float lastICPCount;
+        float lastError;
+        float lastInliers;
 
     private:
-        std::vector<DeviceArray2D<unsigned short> > depth_tmp;
+        std::vector<DeviceArray2D<unsigned short>> depth_tmp;
 
-        std::vector<DeviceArray2D<float> > vmaps_prev;
-        std::vector<DeviceArray2D<float> > nmaps_prev;
+        std::vector<DeviceArray2D<float>> vmaps_prev;
+        std::vector<DeviceArray2D<float>> nmaps_prev;
 
-        std::vector<DeviceArray2D<float> > vmaps_curr;
-        std::vector<DeviceArray2D<float> > nmaps_curr;
+        std::vector<DeviceArray2D<float>> vmaps_curr;
+        std::vector<DeviceArray2D<float>> nmaps_curr;
 
         Intr intr;
 
@@ -56,8 +56,8 @@ class ICPOdometry
 
         std::vector<int> iterations;
 
-        float distThres_;
-        float angleThres_;
+        float dist_thresh;
+        float angle_thresh;
 
         const int width;
         const int height;

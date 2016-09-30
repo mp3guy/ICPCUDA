@@ -1,3 +1,4 @@
 build/
 .project
 .idea
+*.user

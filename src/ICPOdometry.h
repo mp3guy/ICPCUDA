@@ -10,7 +10,6 @@
 
 #include "Cuda/internal.h"
 
-#include <opencv2/opencv.hpp>
 #include <vector>
 #include <sophus/se3.hpp>
 

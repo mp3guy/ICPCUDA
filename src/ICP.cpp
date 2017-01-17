@@ -43,6 +43,8 @@ uint64_t loadDepth(pangolin::Image<unsigned short> & depth)
 
     pangolin::TypedImage depthRaw = pangolin::LoadImage(depthLoc, pangolin::ImageFileTypePng);
 
+    pangolin::Image<unsigned short> depthRaw16((unsigned short*)depthRaw.ptr, depthRaw.w, depthRaw.h, depthRaw.w * sizeof(unsigned short));
+
     tokenize(tokens[0], timeTokens, ".");
 
     std::string timeString = timeTokens[0];
@@ -55,7 +57,7 @@ uint64_t loadDepth(pangolin::Image<unsigned short> & depth)
     {
         for(unsigned int j = 0; j < 640; j++)
         {
-            depth.RowPtr(i)[j] = depthRaw.Reinterpret<unsigned short>().RowPtr(i)[j] / 5;
+            depth.RowPtr(i)[j] = depthRaw16(j, i)  / 5;
         }
     }
 
@@ -106,10 +108,8 @@ int main(int argc, char * argv[])
 
     asFile.open(associationFile.c_str());
 
-    pangolin::TypedImage firstData;
-    pangolin::TypedImage secondData;
-    firstData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
-    secondData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
+    pangolin::ManagedImage<unsigned short> firstData(640, 480);
+    pangolin::ManagedImage<unsigned short> secondData(640, 480);
 
     pangolin::Image<unsigned short> firstRaw(firstData.w, firstData.h, firstData.pitch, (unsigned short*)firstData.ptr);
     pangolin::Image<unsigned short> secondRaw(secondData.w, secondData.h, secondData.pitch, (unsigned short*)secondData.ptr);
@@ -246,9 +246,6 @@ int main(int argc, char * argv[])
     std::cout << std::endl;
 
     std::cout << "ICP speed: " << int(1000.f / mean) << "Hz" << std::endl;
-
-    firstData.Dealloc();
-    secondData.Dealloc();
 
     return 0;
 }

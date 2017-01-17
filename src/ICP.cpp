@@ -108,8 +108,8 @@ int main(int argc, char * argv[])
 
     pangolin::TypedImage firstData;
     pangolin::TypedImage secondData;
-    firstData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
-    secondData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
+    firstData.Alloc(640, 480, pangolin::PixelFormatFromString("GRAY16LE").bpp * (640/8));
+    secondData.Alloc(640, 480, pangolin::PixelFormatFromString("GRAY16LE").bpp * (640/8));
 
     pangolin::Image<unsigned short> firstRaw(firstData.w, firstData.h, firstData.pitch, (unsigned short*)firstData.ptr);
     pangolin::Image<unsigned short> secondRaw(secondData.w, secondData.h, secondData.pitch, (unsigned short*)secondData.ptr);

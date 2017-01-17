@@ -55,7 +55,9 @@ uint64_t loadDepth(pangolin::Image<unsigned short> & depth)
     {
         for(unsigned int j = 0; j < 640; j++)
         {
-            depth.RowPtr(i)[j] = depthRaw.Reinterpret<unsigned short>().RowPtr(i)[j] / 5;
+			unsigned char hibyte = depthRaw.RowPtr(i)[j*2];
+			unsigned char lobyte = depthRaw.RowPtr(i)[j*2+1];
+			depth.RowPtr(i)[j] = ((hibyte * 256 + lobyte )  / 5 );
         }
     }
 

@@ -55,7 +55,9 @@ uint64_t loadDepth(pangolin::Image<unsigned short> & depth)
     {
         for(unsigned int j = 0; j < 640; j++)
         {
-            depth.RowPtr(i)[j] = depthRaw.Reinterpret<unsigned short>().RowPtr(i)[j] / 5;
+			unsigned char hibyte = depthRaw.RowPtr(i)[j*2];
+			unsigned char lobyte = depthRaw.RowPtr(i)[j*2+1];
+			depth.RowPtr(i)[j] = ((hibyte * 256 + lobyte )  / 5 );
         }
     }
 
@@ -108,8 +110,8 @@ int main(int argc, char * argv[])
 
     pangolin::TypedImage firstData;
     pangolin::TypedImage secondData;
-    firstData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
-    secondData.Alloc(640, 480, pangolin::VideoFormatFromString("GRAY16LE"));
+    firstData.Alloc(640, 480, pangolin::PixelFormatFromString("GRAY16LE").bpp * (640/8));
+    secondData.Alloc(640, 480, pangolin::PixelFormatFromString("GRAY16LE").bpp * (640/8));
 
     pangolin::Image<unsigned short> firstRaw(firstData.w, firstData.h, firstData.pitch, (unsigned short*)firstData.ptr);
     pangolin::Image<unsigned short> secondRaw(secondData.w, secondData.h, secondData.pitch, (unsigned short*)secondData.ptr);

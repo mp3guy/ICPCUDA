@@ -3,6 +3,25 @@ Super fast implementation of ICP in CUDA for compute capable devices 3.5 or high
 
 Requires CUDA, includes [Pangolin](https://github.com/stevenlovegrove/Pangolin), [Eigen](https://github.com/stevenlovegrove/eigen) and [Sophus](https://github.com/stevenlovegrove/Sophus) third party submodules. I've built it to take in raw TUM RGB-D datasets to do frame-to-frame dense ICP as an example application.
 
+Install;
+
+```bash
+sudo apt-get install build-essential cmake libglew-dev libpng-dev
+git clone https://github.com/mp3guy/ICPCUDA.git
+cd ICPCUDA
+git submodule update --init
+cd third-party/Pangolin/
+mkdir build
+cd build/
+cmake ../ -DEIGEN_INCLUDE_DIR=<absolute_path_to_Eigen_submodule>
+make -j12
+cd ../../../
+mkdir build
+cd build/
+cmake ..
+make -j12
+```
+
 The particular version of ICP implemented is the one introduced by [KinectFusion](http://homes.cs.washington.edu/~newcombe/papers/newcombe_etal_ismar2011.pdf). This means a three level coarse-to-fine registration pyramid, from 160x120 to 320x240 and finally 640x480 image sizes, with 4, 5 and 10 iterations per level respectively. 
 
 Run like;
